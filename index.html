@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
+<!-- saved from url=(0076)file:///C:/Users/Ga%C3%ABlle%20RIBES/Downloads/sanit_climat_tarifs_v2_3.html -->
+<html lang="fr"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sanit Climat — Gestion des Tarifs</title>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script src="./index_files/firebase-app-compat.js.télécharger"></script>
+<script src="./index_files/firebase-database-compat.js.télécharger"></script>
+<script src="./index_files/xlsx.full.min.js.télécharger"></script>
+<script src="./index_files/jspdf.umd.min.js.télécharger"></script>
+<script src="./index_files/jspdf.plugin.autotable.min.js.télécharger"></script>
 <style>
   :root {
     --orange: #E8651A;
@@ -320,34 +320,34 @@
   <div class="sidebar">
     <div class="sidebar-section">
       <div class="sidebar-label">Vue</div>
-      <button class="nav-item active" id="nav-liste" onclick="switchView('liste')">
+      <button class="nav-item active" id="nav-liste" onclick="switchView(&#39;liste&#39;)">
         <span class="nav-icon">☰</span> Liste complète
         <span class="nav-count" id="cnt-all">0</span>
       </button>
-      <button class="nav-item" id="nav-compare" onclick="switchView('compare')">
+      <button class="nav-item" id="nav-compare" onclick="switchView(&#39;compare&#39;)">
         <span class="nav-icon">⇌</span> Comparaison
       </button>
     </div>
 
     <div class="sidebar-section">
       <div class="sidebar-label">Clients</div>
-      <button class="nav-item" id="nav-tous" onclick="filterClient('tous')">
+      <button class="nav-item" id="nav-tous" onclick="filterClient(&#39;tous&#39;)">
         <span class="nav-icon">👥</span> Tous les clients
         <span class="nav-count" id="cnt-tous">0</span>
       </button>
-      <button class="nav-item" id="nav-particulier" onclick="filterClient('Particulier')">
+      <button class="nav-item" id="nav-particulier" onclick="filterClient(&#39;Particulier&#39;)">
         <div class="client-dot" style="background:#2D8A4E"></div> Particuliers
         <span class="nav-count" id="cnt-particulier">0</span>
       </button>
-      <button class="nav-item" id="nav-syndic" onclick="filterClient('Syndic')">
+      <button class="nav-item" id="nav-syndic" onclick="filterClient(&#39;Syndic&#39;)">
         <div class="client-dot" style="background:#1A4F8A"></div> Syndics / Copro
         <span class="nav-count" id="cnt-syndic">0</span>
       </button>
-      <button class="nav-item" id="nav-bailleur" onclick="filterClient('Bailleur social')">
+      <button class="nav-item" id="nav-bailleur" onclick="filterClient(&#39;Bailleur social&#39;)">
         <div class="client-dot" style="background:#B85010"></div> Bailleurs sociaux
         <span class="nav-count" id="cnt-bailleur">0</span>
       </button>
-      <button class="nav-item" id="nav-entreprise" onclick="filterClient('Entreprise')">
+      <button class="nav-item" id="nav-entreprise" onclick="filterClient(&#39;Entreprise&#39;)">
         <div class="client-dot" style="background:#6B3D9E"></div> Entreprises
         <span class="nav-count" id="cnt-entreprise">0</span>
       </button>
@@ -355,7 +355,7 @@
 
     <div class="sidebar-section">
       <div class="sidebar-label">Spécial</div>
-      <button class="nav-item" id="nav-pnou" onclick="filterClient('PNOU')">
+      <button class="nav-item" id="nav-pnou" onclick="filterClient(&#39;PNOU&#39;)">
         <span class="nav-icon" style="font-size:9px;">★</span> PNOU uniquement
         <span class="nav-count" id="cnt-pnou">0</span>
       </button>
@@ -363,7 +363,7 @@
 
     <div class="sidebar-section" style="margin-top:auto; padding-top: 8px;">
       <div class="sidebar-label">Paramètres</div>
-      <button class="nav-item" id="nav-config" onclick="switchView('config')">
+      <button class="nav-item" id="nav-config" onclick="switchView(&#39;config&#39;)">
         <span class="nav-icon">⚙</span> Config Firebase
       </button>
     </div>
@@ -414,7 +414,7 @@
           </div>
         </div>
         <div style="margin-top: 16px; display: flex; gap: 8px;">
-          <button class="btn primary" onclick="saveConfig()">💾 Sauvegarder & Connecter</button>
+          <button class="btn primary" onclick="saveConfig()">💾 Sauvegarder &amp; Connecter</button>
           <button class="btn" onclick="clearConfig()">🗑 Effacer config</button>
         </div>
         <div id="config-status" style="margin-top:12px; font-size:13px;"></div>
@@ -423,38 +423,38 @@
 
     <!-- LISTE VIEW -->
     <div id="view-liste">
-      <div id="no-firebase-warn" class="config-warning hidden">
+      <div id="no-firebase-warn" class="config-warning">
         <span style="font-size:18px;">⚡</span>
         <div>
           <strong>Firebase non configuré</strong>
-          Les données sont stockées temporairement dans le navigateur. <a href="#" onclick="switchView('config'); return false;" style="color: var(--orange);">Configurer Firebase →</a>
+          Les données sont stockées temporairement dans le navigateur. <a href="file:///C:/Users/Ga%C3%ABlle%20RIBES/Downloads/sanit_climat_tarifs_v2_3.html#" onclick="switchView(&#39;config&#39;); return false;" style="color: var(--orange);">Configurer Firebase →</a>
         </div>
       </div>
 
       <div class="stats-row" id="stats-row">
         <div class="stat-card">
           <div class="stat-label">Total prestations</div>
-          <div class="stat-value" id="stat-total">—</div>
+          <div class="stat-value" id="stat-total">0</div>
           <div class="stat-sub">tous types</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Particuliers</div>
-          <div class="stat-value" id="stat-part" style="color:#2D8A4E">—</div>
+          <div class="stat-value" id="stat-part" style="color:#2D8A4E">0</div>
           <div class="stat-sub">tarifs</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Syndics / Copro</div>
-          <div class="stat-value" id="stat-synd" style="color:#1A4F8A">—</div>
+          <div class="stat-value" id="stat-synd" style="color:#1A4F8A">0</div>
           <div class="stat-sub">tarifs</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Bailleurs sociaux</div>
-          <div class="stat-value" id="stat-bail" style="color:#B85010">—</div>
+          <div class="stat-value" id="stat-bail" style="color:#B85010">0</div>
           <div class="stat-sub">tarifs</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">PNOU</div>
-          <div class="stat-value" id="stat-pnou" style="color:var(--pnou-color)">—</div>
+          <div class="stat-value" id="stat-pnou" style="color:var(--pnou-color)">0</div>
           <div class="stat-sub">tarifs marqués</div>
         </div>
       </div>
@@ -465,9 +465,7 @@
           <input type="text" class="search-input" id="search-input" placeholder="Rechercher une prestation, catégorie, référence…" oninput="renderTable()">
         </div>
         <div class="toolbar-divider"></div>
-        <select class="filter-select" id="filter-categorie" onchange="renderTable()">
-          <option value="">Toutes catégories</option>
-        </select>
+        <select class="filter-select" id="filter-categorie" onchange="renderTable()"><option value="">Toutes catégories</option></select>
         <select class="filter-select" id="filter-tva" onchange="renderTable()">
           <option value="">TVA (toutes)</option>
           <option value="10">TVA 10%</option>
@@ -478,7 +476,7 @@
 
       <div class="table-card">
         <div class="table-header">
-          <div class="table-title" id="table-title">Tous les tarifs</div>
+          <div class="table-title" id="table-title">Tous les tarifs — 0 résultat</div>
           <div class="table-actions">
             <button class="btn small" onclick="exportVisiblePDF()">⬇ PDF vue actuelle</button>
           </div>
@@ -488,13 +486,13 @@
             <thead>
               <tr>
                 <th style="width:36px;"></th>
-                <th class="sortable" onclick="sortBy('designation')">Désignation ▴</th>
-                <th class="sortable" onclick="sortBy('categorie')">Catégorie</th>
-                <th class="sortable" onclick="sortBy('typeClient')">Type client</th>
+                <th class="sortable" onclick="sortBy(&#39;designation&#39;)">Désignation ▴</th>
+                <th class="sortable" onclick="sortBy(&#39;categorie&#39;)">Catégorie</th>
+                <th class="sortable" onclick="sortBy(&#39;typeClient&#39;)">Type client</th>
                 <th>Ref.</th>
-                <th class="sortable" onclick="sortBy('prixHT')">Prix HT</th>
+                <th class="sortable" onclick="sortBy(&#39;prixHT&#39;)">Prix HT</th>
                 <th>TVA</th>
-                <th class="sortable" onclick="sortBy('prixTTC')">Prix TTC</th>
+                <th class="sortable" onclick="sortBy(&#39;prixTTC&#39;)">Prix TTC</th>
                 <th>Unité</th>
                 <th style="width:80px;"></th>
               </tr>
@@ -502,12 +500,12 @@
             <tbody id="tbody"></tbody>
           </table>
         </div>
-        <div id="empty-state" class="empty-state hidden">
+        <div id="empty-state" class="empty-state">
           <div class="empty-icon">📋</div>
           <div class="empty-title">Aucun tarif trouvé</div>
           <div class="empty-sub">Modifiez votre recherche ou ajoutez un nouveau tarif</div>
         </div>
-        <div id="table-loader" style="text-align:center; padding: 40px;">
+        <div id="table-loader" style="text-align:center; padding: 40px;" class="hidden">
           <div class="loader"></div>
           <div style="margin-top: 10px; font-size: 13px; color: var(--gray-500);">Chargement…</div>
         </div>
@@ -523,9 +521,7 @@
             <input type="text" class="search-input" id="search-compare" placeholder="Filtrer par désignation…" oninput="renderCompare()">
           </div>
           <div class="toolbar-divider"></div>
-          <select class="filter-select" id="filter-compare-cat" onchange="renderCompare()">
-            <option value="">Toutes catégories</option>
-          </select>
+          <select class="filter-select" id="filter-compare-cat" onchange="renderCompare()"><option value="">Toutes catégories</option></select>
         </div>
       </div>
       <div id="compare-content"></div>
@@ -539,7 +535,7 @@
   <div class="modal">
     <div class="modal-head">
       <div class="modal-title" id="modal-title">Nouveau tarif</div>
-      <button class="modal-close" onclick="closeModal('modal-tarif')">✕</button>
+      <button class="modal-close" onclick="closeModal(&#39;modal-tarif&#39;)">✕</button>
     </div>
     <div class="modal-body">
       <div class="pnou-toggle" onclick="togglePnou()">
@@ -604,7 +600,7 @@
       <div class="form-row">
         <div class="form-group">
           <label>Prix TTC (calculé)</label>
-          <input type="text" id="f-prixTTC" readonly style="background: var(--gray-100); color: var(--orange); font-weight: 700;">
+          <input type="text" id="f-prixTTC" readonly="" style="background: var(--gray-100); color: var(--orange); font-weight: 700;">
         </div>
         <div class="form-group">
           <label>Remise éventuelle (%)</label>
@@ -619,7 +615,7 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn" onclick="closeModal('modal-tarif')">Annuler</button>
+      <button class="btn" onclick="closeModal(&#39;modal-tarif&#39;)">Annuler</button>
       <button class="btn primary" onclick="saveTarif()">💾 Enregistrer</button>
     </div>
   </div>
@@ -630,10 +626,10 @@
   <div class="modal">
     <div class="modal-head">
       <div class="modal-title">Importer depuis Excel</div>
-      <button class="modal-close" onclick="closeModal('modal-import')">✕</button>
+      <button class="modal-close" onclick="closeModal(&#39;modal-import&#39;)">✕</button>
     </div>
     <div class="modal-body">
-      <div class="import-zone" id="import-zone" onclick="document.getElementById('file-input').click()" ondragover="event.preventDefault();event.stopPropagation();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event)">
+      <div class="import-zone" id="import-zone" onclick="document.getElementById(&#39;file-input&#39;).click()" ondragover="event.preventDefault();event.stopPropagation();this.classList.add(&#39;drag&#39;)" ondragleave="this.classList.remove(&#39;drag&#39;)" ondrop="handleDrop(event)">
         <div style="font-size: 32px; margin-bottom: 8px;">📂</div>
         <div style="font-size: 14px; font-weight: 600; color: var(--gray-700); margin-bottom: 4px;">Cliquez ou glissez votre fichier Excel</div>
         <div style="font-size: 12px; color: var(--gray-500);">.xlsx ou .xls acceptés</div>
@@ -648,7 +644,7 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn" onclick="closeModal('modal-import')">Annuler</button>
+      <button class="btn" onclick="closeModal(&#39;modal-import&#39;)">Annuler</button>
       <button class="btn primary hidden" id="btn-confirm-import" onclick="confirmImport()">✅ Importer les données</button>
     </div>
   </div>
@@ -1389,5 +1385,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('modal-import').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('modal-import'); });
 });
 </script>
-</body>
-</html>
+
+
+</body></html>
