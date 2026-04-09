@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<!-- saved from url=(0076)file:///C:/Users/Ga%C3%ABlle%20RIBES/Downloads/sanit_climat_tarifs_v2_2.html -->
-<html lang="fr"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sanit Climat — Gestion des Tarifs</title>
-<script src="./index_files/firebase-app-compat.js.télécharger"></script>
-<script src="./index_files/firebase-database-compat.js.télécharger"></script>
-<script src="./index_files/xlsx.full.min.js.télécharger"></script>
-<script src="./index_files/jspdf.umd.min.js.télécharger"></script>
-<script src="./index_files/jspdf.plugin.autotable.min.js.télécharger"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <style>
   :root {
     --orange: #E8651A;
@@ -320,34 +320,34 @@
   <div class="sidebar">
     <div class="sidebar-section">
       <div class="sidebar-label">Vue</div>
-      <button class="nav-item active" id="nav-liste" onclick="switchView(&#39;liste&#39;)">
+      <button class="nav-item active" id="nav-liste" onclick="switchView('liste')">
         <span class="nav-icon">☰</span> Liste complète
         <span class="nav-count" id="cnt-all">0</span>
       </button>
-      <button class="nav-item" id="nav-compare" onclick="switchView(&#39;compare&#39;)">
+      <button class="nav-item" id="nav-compare" onclick="switchView('compare')">
         <span class="nav-icon">⇌</span> Comparaison
       </button>
     </div>
 
     <div class="sidebar-section">
       <div class="sidebar-label">Clients</div>
-      <button class="nav-item" id="nav-tous" onclick="filterClient(&#39;tous&#39;)">
+      <button class="nav-item" id="nav-tous" onclick="filterClient('tous')">
         <span class="nav-icon">👥</span> Tous les clients
         <span class="nav-count" id="cnt-tous">0</span>
       </button>
-      <button class="nav-item" id="nav-particulier" onclick="filterClient(&#39;Particulier&#39;)">
+      <button class="nav-item" id="nav-particulier" onclick="filterClient('Particulier')">
         <div class="client-dot" style="background:#2D8A4E"></div> Particuliers
         <span class="nav-count" id="cnt-particulier">0</span>
       </button>
-      <button class="nav-item" id="nav-syndic" onclick="filterClient(&#39;Syndic&#39;)">
+      <button class="nav-item" id="nav-syndic" onclick="filterClient('Syndic')">
         <div class="client-dot" style="background:#1A4F8A"></div> Syndics / Copro
         <span class="nav-count" id="cnt-syndic">0</span>
       </button>
-      <button class="nav-item" id="nav-bailleur" onclick="filterClient(&#39;Bailleur social&#39;)">
+      <button class="nav-item" id="nav-bailleur" onclick="filterClient('Bailleur social')">
         <div class="client-dot" style="background:#B85010"></div> Bailleurs sociaux
         <span class="nav-count" id="cnt-bailleur">0</span>
       </button>
-      <button class="nav-item" id="nav-entreprise" onclick="filterClient(&#39;Entreprise&#39;)">
+      <button class="nav-item" id="nav-entreprise" onclick="filterClient('Entreprise')">
         <div class="client-dot" style="background:#6B3D9E"></div> Entreprises
         <span class="nav-count" id="cnt-entreprise">0</span>
       </button>
@@ -355,7 +355,7 @@
 
     <div class="sidebar-section">
       <div class="sidebar-label">Spécial</div>
-      <button class="nav-item" id="nav-pnou" onclick="filterClient(&#39;PNOU&#39;)">
+      <button class="nav-item" id="nav-pnou" onclick="filterClient('PNOU')">
         <span class="nav-icon" style="font-size:9px;">★</span> PNOU uniquement
         <span class="nav-count" id="cnt-pnou">0</span>
       </button>
@@ -363,7 +363,7 @@
 
     <div class="sidebar-section" style="margin-top:auto; padding-top: 8px;">
       <div class="sidebar-label">Paramètres</div>
-      <button class="nav-item" id="nav-config" onclick="switchView(&#39;config&#39;)">
+      <button class="nav-item" id="nav-config" onclick="switchView('config')">
         <span class="nav-icon">⚙</span> Config Firebase
       </button>
     </div>
@@ -414,7 +414,7 @@
           </div>
         </div>
         <div style="margin-top: 16px; display: flex; gap: 8px;">
-          <button class="btn primary" onclick="saveConfig()">💾 Sauvegarder &amp; Connecter</button>
+          <button class="btn primary" onclick="saveConfig()">💾 Sauvegarder & Connecter</button>
           <button class="btn" onclick="clearConfig()">🗑 Effacer config</button>
         </div>
         <div id="config-status" style="margin-top:12px; font-size:13px;"></div>
@@ -423,38 +423,38 @@
 
     <!-- LISTE VIEW -->
     <div id="view-liste">
-      <div id="no-firebase-warn" class="config-warning">
+      <div id="no-firebase-warn" class="config-warning hidden">
         <span style="font-size:18px;">⚡</span>
         <div>
           <strong>Firebase non configuré</strong>
-          Les données sont stockées temporairement dans le navigateur. <a href="file:///C:/Users/Ga%C3%ABlle%20RIBES/Downloads/sanit_climat_tarifs_v2_2.html#" onclick="switchView(&#39;config&#39;); return false;" style="color: var(--orange);">Configurer Firebase →</a>
+          Les données sont stockées temporairement dans le navigateur. <a href="#" onclick="switchView('config'); return false;" style="color: var(--orange);">Configurer Firebase →</a>
         </div>
       </div>
 
       <div class="stats-row" id="stats-row">
         <div class="stat-card">
           <div class="stat-label">Total prestations</div>
-          <div class="stat-value" id="stat-total">0</div>
+          <div class="stat-value" id="stat-total">—</div>
           <div class="stat-sub">tous types</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Particuliers</div>
-          <div class="stat-value" id="stat-part" style="color:#2D8A4E">0</div>
+          <div class="stat-value" id="stat-part" style="color:#2D8A4E">—</div>
           <div class="stat-sub">tarifs</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Syndics / Copro</div>
-          <div class="stat-value" id="stat-synd" style="color:#1A4F8A">0</div>
+          <div class="stat-value" id="stat-synd" style="color:#1A4F8A">—</div>
           <div class="stat-sub">tarifs</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Bailleurs sociaux</div>
-          <div class="stat-value" id="stat-bail" style="color:#B85010">0</div>
+          <div class="stat-value" id="stat-bail" style="color:#B85010">—</div>
           <div class="stat-sub">tarifs</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">PNOU</div>
-          <div class="stat-value" id="stat-pnou" style="color:var(--pnou-color)">0</div>
+          <div class="stat-value" id="stat-pnou" style="color:var(--pnou-color)">—</div>
           <div class="stat-sub">tarifs marqués</div>
         </div>
       </div>
@@ -465,7 +465,9 @@
           <input type="text" class="search-input" id="search-input" placeholder="Rechercher une prestation, catégorie, référence…" oninput="renderTable()">
         </div>
         <div class="toolbar-divider"></div>
-        <select class="filter-select" id="filter-categorie" onchange="renderTable()"><option value="">Toutes catégories</option></select>
+        <select class="filter-select" id="filter-categorie" onchange="renderTable()">
+          <option value="">Toutes catégories</option>
+        </select>
         <select class="filter-select" id="filter-tva" onchange="renderTable()">
           <option value="">TVA (toutes)</option>
           <option value="10">TVA 10%</option>
@@ -476,7 +478,7 @@
 
       <div class="table-card">
         <div class="table-header">
-          <div class="table-title" id="table-title">Tous les tarifs — 0 résultat</div>
+          <div class="table-title" id="table-title">Tous les tarifs</div>
           <div class="table-actions">
             <button class="btn small" onclick="exportVisiblePDF()">⬇ PDF vue actuelle</button>
           </div>
@@ -486,13 +488,13 @@
             <thead>
               <tr>
                 <th style="width:36px;"></th>
-                <th class="sortable" onclick="sortBy(&#39;designation&#39;)">Désignation ▴</th>
-                <th class="sortable" onclick="sortBy(&#39;categorie&#39;)">Catégorie</th>
-                <th class="sortable" onclick="sortBy(&#39;typeClient&#39;)">Type client</th>
+                <th class="sortable" onclick="sortBy('designation')">Désignation ▴</th>
+                <th class="sortable" onclick="sortBy('categorie')">Catégorie</th>
+                <th class="sortable" onclick="sortBy('typeClient')">Type client</th>
                 <th>Ref.</th>
-                <th class="sortable" onclick="sortBy(&#39;prixHT&#39;)">Prix HT</th>
+                <th class="sortable" onclick="sortBy('prixHT')">Prix HT</th>
                 <th>TVA</th>
-                <th class="sortable" onclick="sortBy(&#39;prixTTC&#39;)">Prix TTC</th>
+                <th class="sortable" onclick="sortBy('prixTTC')">Prix TTC</th>
                 <th>Unité</th>
                 <th style="width:80px;"></th>
               </tr>
@@ -500,12 +502,12 @@
             <tbody id="tbody"></tbody>
           </table>
         </div>
-        <div id="empty-state" class="empty-state">
+        <div id="empty-state" class="empty-state hidden">
           <div class="empty-icon">📋</div>
           <div class="empty-title">Aucun tarif trouvé</div>
           <div class="empty-sub">Modifiez votre recherche ou ajoutez un nouveau tarif</div>
         </div>
-        <div id="table-loader" style="text-align:center; padding: 40px;" class="hidden">
+        <div id="table-loader" style="text-align:center; padding: 40px;">
           <div class="loader"></div>
           <div style="margin-top: 10px; font-size: 13px; color: var(--gray-500);">Chargement…</div>
         </div>
@@ -521,7 +523,9 @@
             <input type="text" class="search-input" id="search-compare" placeholder="Filtrer par désignation…" oninput="renderCompare()">
           </div>
           <div class="toolbar-divider"></div>
-          <select class="filter-select" id="filter-compare-cat" onchange="renderCompare()"><option value="">Toutes catégories</option></select>
+          <select class="filter-select" id="filter-compare-cat" onchange="renderCompare()">
+            <option value="">Toutes catégories</option>
+          </select>
         </div>
       </div>
       <div id="compare-content"></div>
@@ -535,7 +539,7 @@
   <div class="modal">
     <div class="modal-head">
       <div class="modal-title" id="modal-title">Nouveau tarif</div>
-      <button class="modal-close" onclick="closeModal(&#39;modal-tarif&#39;)">✕</button>
+      <button class="modal-close" onclick="closeModal('modal-tarif')">✕</button>
     </div>
     <div class="modal-body">
       <div class="pnou-toggle" onclick="togglePnou()">
@@ -600,7 +604,7 @@
       <div class="form-row">
         <div class="form-group">
           <label>Prix TTC (calculé)</label>
-          <input type="text" id="f-prixTTC" readonly="" style="background: var(--gray-100); color: var(--orange); font-weight: 700;">
+          <input type="text" id="f-prixTTC" readonly style="background: var(--gray-100); color: var(--orange); font-weight: 700;">
         </div>
         <div class="form-group">
           <label>Remise éventuelle (%)</label>
@@ -615,7 +619,7 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn" onclick="closeModal(&#39;modal-tarif&#39;)">Annuler</button>
+      <button class="btn" onclick="closeModal('modal-tarif')">Annuler</button>
       <button class="btn primary" onclick="saveTarif()">💾 Enregistrer</button>
     </div>
   </div>
@@ -626,15 +630,15 @@
   <div class="modal">
     <div class="modal-head">
       <div class="modal-title">Importer depuis Excel</div>
-      <button class="modal-close" onclick="closeModal(&#39;modal-import&#39;)">✕</button>
+      <button class="modal-close" onclick="closeModal('modal-import')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="import-zone" id="import-zone" onclick="document.getElementById(&#39;file-input&#39;).click()" ondragover="e=&gt;e.preventDefault()" ondrop="handleDrop(event)">
+      <div class="import-zone" id="import-zone" onclick="document.getElementById('file-input').click()" ondragover="event.preventDefault();event.stopPropagation();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event)">
         <div style="font-size: 32px; margin-bottom: 8px;">📂</div>
         <div style="font-size: 14px; font-weight: 600; color: var(--gray-700); margin-bottom: 4px;">Cliquez ou glissez votre fichier Excel</div>
         <div style="font-size: 12px; color: var(--gray-500);">.xlsx ou .xls acceptés</div>
       </div>
-      <input type="file" id="file-input" accept=".xlsx,.xls" class="hidden" onchange="handleFileSelect(event)">
+      <input type="file" id="file-input" accept=".xlsx,.xls,.csv" class="hidden" onchange="handleFileSelect(event)">
       <div id="import-preview" class="hidden">
         <div style="font-size: 13px; font-weight: 600; margin-bottom: 10px;">Colonnes détectées — Associez-les :</div>
         <div id="mapping-fields"></div>
@@ -644,7 +648,7 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn" onclick="closeModal(&#39;modal-import&#39;)">Annuler</button>
+      <button class="btn" onclick="closeModal('modal-import')">Annuler</button>
       <button class="btn primary hidden" id="btn-confirm-import" onclick="confirmImport()">✅ Importer les données</button>
     </div>
   </div>
@@ -1137,6 +1141,7 @@ function calcTTC() {
 function showImportModal() {
   document.getElementById('import-preview').classList.add('hidden');
   document.getElementById('btn-confirm-import').classList.add('hidden');
+  document.getElementById('file-input').value = '';
   document.getElementById('modal-import').classList.add('open');
 }
 
@@ -1147,6 +1152,8 @@ function handleFileSelect(event) {
 
 function handleDrop(event) {
   event.preventDefault();
+  event.stopPropagation();
+  document.getElementById('import-zone').classList.remove('drag');
   const file = event.dataTransfer.files[0];
   if (file) processExcel(file);
 }
@@ -1154,43 +1161,60 @@ function handleDrop(event) {
 function processExcel(file) {
   const reader = new FileReader();
   reader.onload = (e) => {
-    const wb = XLSX.read(e.target.result, { type: 'binary' });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-    if (rows.length < 2) { showNotif('Fichier vide ou invalide', 'error'); return; }
-    importHeaders = rows[0].map(String);
-    importData = rows.slice(1).filter(r => r.some(c => c));
-    renderImportMapping();
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      if (rows.length < 2) { showNotif('Fichier vide ou invalide', 'error'); return; }
+      importHeaders = rows[0].map(h => String(h || ''));
+      importData = rows.slice(1).filter(r => r.some(c => String(c).trim() !== ''));
+      if (!importData.length) { showNotif('Aucune donnée trouvée', 'error'); return; }
+      renderImportMapping();
+    } catch(err) {
+      showNotif('Erreur lecture fichier: ' + err.message, 'error');
+    }
   };
-  reader.readAsBinaryString(file);
+  reader.readAsArrayBuffer(file);
+}
+
+// Normalise une chaîne pour la comparaison (enlève accents, minuscules)
+function norm(s) {
+  return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 }
 
 function renderImportMapping() {
   const fields = [
-    { id: 'mp-designation', label: 'Désignation *', required: true },
-    { id: 'mp-categorie', label: 'Catégorie *', required: true },
-    { id: 'mp-typeClient', label: 'Type client', required: false },
-    { id: 'mp-reference', label: 'Référence', required: false },
-    { id: 'mp-prixHT', label: 'Prix HT', required: false },
-    { id: 'mp-tva', label: 'TVA (%)', required: false },
-    { id: 'mp-unite', label: 'Unité', required: false },
-    { id: 'mp-notes', label: 'Notes', required: false }
+    { id: 'mp-designation', label: 'Désignation *', keywords: ['designation','désignation','libelle','libellé','prestation','description'] },
+    { id: 'mp-categorie', label: 'Catégorie *', keywords: ['categorie','catégorie','famille','type prestation'] },
+    { id: 'mp-typeClient', label: 'Type client', keywords: ['type client','typeclient','client'] },
+    { id: 'mp-reference', label: 'Référence', keywords: ['reference','référence','ref','code'] },
+    { id: 'mp-prixHT', label: 'Prix HT (€)', keywords: ['prix ht','prixht','ht','montant ht'] },
+    { id: 'mp-tva', label: 'TVA (%)', keywords: ['tva'] },
+    { id: 'mp-prixTTC', label: 'Prix TTC (€)', keywords: ['prix ttc','prixttc','ttc','montant ttc'] },
+    { id: 'mp-unite', label: 'Unité', keywords: ['unite','unité','unit'] },
+    { id: 'mp-pnou', label: 'PNOU (Oui/Non)', keywords: ['pnou'] },
+    { id: 'mp-notes', label: 'Notes', keywords: ['notes','note','commentaire','remarque'] }
   ];
-  const opts = ['<option value="">— Ignorer —</option>', ...importHeaders.map((h, i) => `<option value="${i}">${h}</option>`)].join('');
+
+  const opts = ['<option value="">— Ignorer —</option>',
+    ...importHeaders.map((h, i) => `<option value="${i}">${h || '(colonne '+(i+1)+')'}</option>`)
+  ].join('');
+
   document.getElementById('mapping-fields').innerHTML = fields.map(f =>
-    `<div class="form-row" style="margin-bottom:8px;">
-      <div class="form-group" style="display:flex; align-items:center; gap:10px;">
-        <label style="min-width:130px; margin:0;">${f.label}</label>
-        <select id="${f.id}" style="flex:1; border:1px solid var(--gray-300); border-radius:var(--radius); padding:6px 8px; font-size:13px;">${opts}</select>
-      </div>
+    `<div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+      <label style="min-width:140px; font-size:12px; font-weight:600; color:var(--gray-600);">${f.label}</label>
+      <select id="${f.id}" style="flex:1; border:1px solid var(--gray-300); border-radius:var(--radius); padding:6px 8px; font-size:13px;">${opts}</select>
     </div>`
   ).join('');
 
-  // Auto-match
-  const autoMatch = { designation: 'désignation', categorie: 'catégorie', typeClient: 'type', reference: 'ref', prixHT: 'ht', tva: 'tva', unite: 'unité', notes: 'note' };
-  Object.entries(autoMatch).forEach(([key, kw]) => {
-    const idx = importHeaders.findIndex(h => h.toLowerCase().includes(kw));
-    if (idx >= 0) document.getElementById('mp-' + key).value = idx;
+  // Auto-match : cherche la meilleure colonne pour chaque champ
+  fields.forEach(f => {
+    const el = document.getElementById(f.id);
+    for (const kw of f.keywords) {
+      const idx = importHeaders.findIndex(h => norm(h).includes(norm(kw)));
+      if (idx >= 0) { el.value = idx; break; }
+    }
   });
 
   document.getElementById('import-count').textContent = importData.length;
@@ -1207,38 +1231,56 @@ function confirmImport() {
     reference: get('mp-reference'),
     prixHT: get('mp-prixHT'),
     tva: get('mp-tva'),
+    prixTTC: get('mp-prixTTC'),
     unite: get('mp-unite'),
+    pnou: get('mp-pnou'),
     notes: get('mp-notes')
   };
   if (maps.designation === null || maps.categorie === null) {
     showNotif('Mappez au minimum Désignation et Catégorie', 'error'); return;
   }
 
+  const parseNum = (val) => {
+    if (val === null || val === undefined || val === '') return 0;
+    return parseFloat(String(val).replace(/[€\s]/g,'').replace(',','.')) || 0;
+  };
+
   const now = new Date().toISOString();
   const newTarifs = importData.map(row => {
-    const ht = parseFloat(String(row[maps.prixHT] || 0).replace(',', '.')) || 0;
-    const tva = parseInt(row[maps.tva]) || 10;
-    const ttc = ht * (1 + tva / 100);
-    const typeRaw = String(row[maps.typeClient] || '').toLowerCase();
+    const ht = maps.prixHT !== null ? parseNum(row[maps.prixHT]) : 0;
+    const tvaRaw = maps.tva !== null ? parseNum(row[maps.tva]) : 10;
+    const tva = tvaRaw > 0 ? tvaRaw : 10;
+    // TTC : utilise la colonne TTC si dispo, sinon calcule
+    let ttc = maps.prixTTC !== null ? parseNum(row[maps.prixTTC]) : 0;
+    if (!ttc && ht) ttc = Math.round(ht * (1 + tva / 100) * 100) / 100;
+
+    const typeRaw = maps.typeClient !== null ? norm(String(row[maps.typeClient] || '')) : '';
     let typeClient = 'Particulier';
     if (typeRaw.includes('syndic') || typeRaw.includes('copro')) typeClient = 'Syndic';
     else if (typeRaw.includes('bailleur') || typeRaw.includes('social')) typeClient = 'Bailleur social';
     else if (typeRaw.includes('entreprise') || typeRaw.includes('tertiaire')) typeClient = 'Entreprise';
+
+    const pnouRaw = maps.pnou !== null ? norm(String(row[maps.pnou] || '')) : '';
+    const isPNOU = pnouRaw.includes('oui') || pnouRaw.includes('yes') || pnouRaw === '1' || pnouRaw === 'true';
+
     return {
-      designation: String(row[maps.designation] || '').trim(),
-      categorie: String(row[maps.categorie] || '').trim(),
+      designation: String(maps.designation !== null ? row[maps.designation] || '' : '').trim(),
+      categorie: String(maps.categorie !== null ? row[maps.categorie] || '' : '').trim(),
       typeClient,
       reference: maps.reference !== null ? String(row[maps.reference] || '').trim() : '',
       prixHT: Math.round(ht * 100) / 100,
       tva,
       prixTTC: Math.round(ttc * 100) / 100,
-      unite: maps.unite !== null ? String(row[maps.unite] || 'forfait') : 'forfait',
+      unite: maps.unite !== null ? String(row[maps.unite] || 'forfait').trim() : 'forfait',
       notes: maps.notes !== null ? String(row[maps.notes] || '').trim() : '',
-      isPNOU: false,
+      isPNOU,
+      remise: 0,
       createdAt: now,
       updatedAt: now
     };
   }).filter(t => t.designation && t.categorie);
+
+  if (!newTarifs.length) { showNotif('Aucun tarif valide trouvé (vérifiez Désignation et Catégorie)', 'error'); return; }
 
   if (db) {
     const batch = {};
@@ -1246,9 +1288,9 @@ function confirmImport() {
     getTarifsRef().update(batch).then(() => {
       showNotif(`${newTarifs.length} tarifs importés ✓`, 'success');
       closeModal('modal-import');
-    }).catch(e => showNotif('Erreur: ' + e.message, 'error'));
+    }).catch(e => showNotif('Erreur Firebase: ' + e.message, 'error'));
   } else {
-    newTarifs.forEach(t => { t._id = 'local_' + Date.now() + Math.random(); tarifs.push(t); });
+    newTarifs.forEach(t => { t._id = 'local_' + Date.now() + '_' + Math.random().toString(36).slice(2); tarifs.push(t); });
     saveLocal(); updateStats(); renderTable(); updateCatFilters();
     showNotif(`${newTarifs.length} tarifs importés ✓`, 'success');
     closeModal('modal-import');
@@ -1347,6 +1389,5 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('modal-import').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('modal-import'); });
 });
 </script>
-
-
-</body></html>
+</body>
+</html>
