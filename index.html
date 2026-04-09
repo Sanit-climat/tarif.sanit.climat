@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<!-- saved from url=(0076)file:///C:/Users/Ga%C3%ABlle%20RIBES/Downloads/sanit_climat_tarifs_v2_2.html -->
+<html lang="fr"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sanit Climat — Gestion des Tarifs</title>
+<script src="./index_files/firebase-app-compat.js.télécharger"></script>
+<script src="./index_files/firebase-database-compat.js.télécharger"></script>
+<script src="./index_files/xlsx.full.min.js.télécharger"></script>
+<script src="./index_files/jspdf.umd.min.js.télécharger"></script>
+<script src="./index_files/jspdf.plugin.autotable.min.js.télécharger"></script>
+<style>
+  :root {
+    --orange: #E8651A;
+    --orange-light: #FDF1EB;
+    --orange-mid: #F5A472;
+    --blue-dark: #1A2E4A;
+    --blue-mid: #2D5A8E;
+    --blue-light: #E8F0FA;
+    --gray-50: #F8F9FA;
+    --gray-100: #F1F3F5;
+    --gray-200: #E9ECEF;
+    --gray-300: #DEE2E6;
+    --gray-400: #CED4DA;
+    --gray-500: #ADB5BD;
+    --gray-600: #6C757D;
+    --gray-700: #495057;
+    --gray-800: #343A40;
+    --gray-900: #212529;
+    --green: #2D8A4E;
+    --green-light: #EAF5EE;
+    --red: #C0392B;
+    --red-light: #FDEDEB;
+    --pnou-color: #7B4FA6;
+    --pnou-light: #F3EEF9;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #F5F6F8; color: var(--gray-900); min-height: 100vh; }
+
+  /* TOP BAR */
+  .topbar {
+    background: var(--blue-dark);
+    color: white;
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .topbar-brand { display: flex; align-items: center; gap: 12px; }
+  .topbar-logo { width: 32px; height: 32px; background: var(--orange); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; color: white; flex-shrink: 0; }
+  .topbar-title { font-size: 16px; font-weight: 600; letter-spacing: -0.2px; }
+  .topbar-sub { font-size: 12px; color: rgba(255,255,255,0.55); margin-top: 1px; }
+  .topbar-actions { display: flex; gap: 8px; }
+  .btn-topbar { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: white; padding: 6px 14px; border-radius: var(--radius); font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: background 0.15s; }
+  .btn-topbar:hover { background: rgba(255,255,255,0.18); }
+  .btn-topbar.orange { background: var(--orange); border-color: var(--orange); }
+  .btn-topbar.orange:hover { background: #d45a14; }
+
+  /* LAYOUT */
+  .layout { display: flex; height: calc(100vh - 56px); }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 220px;
+    background: white;
+    border-right: 1px solid var(--gray-200);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+  .sidebar-section { padding: 16px 12px 8px; }
+  .sidebar-label { font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--gray-500); padding: 0 4px 6px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--gray-700);
+    transition: all 0.12s;
+    border: none; background: none; width: 100%; text-align: left;
+  }
+  .nav-item:hover { background: var(--gray-100); color: var(--gray-900); }
+  .nav-item.active { background: var(--orange-light); color: var(--orange); font-weight: 600; }
+  .nav-item .nav-icon { width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; }
+  .nav-item .nav-count { margin-left: auto; font-size: 11px; background: var(--gray-100); color: var(--gray-600); padding: 1px 7px; border-radius: 10px; }
+  .nav-item.active .nav-count { background: var(--orange-light); color: var(--orange); }
+
+  .client-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  /* MAIN */
+  .main { flex: 1; overflow-y: auto; padding: 24px; }
+
+  /* SEARCH & FILTERS */
+  .toolbar {
+    display: flex; align-items: center; gap: 10px;
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 10px 14px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+  }
+  .search-wrap { flex: 1; display: flex; align-items: center; gap: 8px; }
+  .search-icon { color: var(--gray-400); font-size: 16px; }
+  .search-input { border: none; outline: none; font-size: 14px; width: 100%; background: none; color: var(--gray-900); }
+  .search-input::placeholder { color: var(--gray-400); }
+  .toolbar-divider { width: 1px; height: 20px; background: var(--gray-200); }
+  .filter-select { border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 5px 10px; font-size: 13px; color: var(--gray-700); outline: none; background: var(--gray-50); cursor: pointer; }
+  .filter-select:hover { border-color: var(--gray-400); }
+
+  /* STATS BAR */
+  .stats-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
+    box-shadow: var(--shadow);
+  }
+  .stat-label { font-size: 11px; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .stat-value { font-size: 22px; font-weight: 700; color: var(--gray-900); }
+  .stat-sub { font-size: 11px; color: var(--gray-500); margin-top: 2px; }
+
+  /* TABLE */
+  .table-card {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .table-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--gray-200);
+  }
+  .table-title { font-size: 14px; font-weight: 600; color: var(--gray-800); }
+  .table-actions { display: flex; gap: 8px; }
+  .btn { padding: 6px 14px; border-radius: var(--radius); font-size: 13px; cursor: pointer; border: 1px solid var(--gray-200); background: white; color: var(--gray-700); display: flex; align-items: center; gap: 6px; transition: all 0.12s; }
+  .btn:hover { background: var(--gray-50); border-color: var(--gray-300); }
+  .btn.primary { background: var(--orange); border-color: var(--orange); color: white; }
+  .btn.primary:hover { background: #d45a14; }
+  .btn.danger { background: var(--red-light); border-color: var(--red); color: var(--red); }
+  .btn.danger:hover { background: #f9dfdc; }
+  .btn.small { padding: 4px 10px; font-size: 12px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { background: var(--gray-50); }
+  th { padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--gray-200); white-space: nowrap; }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: var(--gray-700); }
+  td { padding: 10px 14px; font-size: 13px; color: var(--gray-800); border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #FAFBFD; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 9px; border-radius: 20px;
+    font-size: 11px; font-weight: 600; white-space: nowrap;
+  }
+  .badge-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .badge.particulier { background: #EAF5EE; color: #1E7A3C; }
+  .badge.syndic { background: #E8F0FA; color: #1A4F8A; }
+  .badge.bailleur { background: #FDF1EB; color: #B85010; }
+  .badge.entreprise { background: #F3EEF9; color: #6B3D9E; }
+  .badge.pnou { background: var(--pnou-light); color: var(--pnou-color); border: 1px solid #C9A8E8; }
+
+  .prix { font-weight: 700; font-size: 13px; color: var(--gray-900); white-space: nowrap; }
+  .prix.ht { color: var(--blue-mid); }
+
+  .action-btns { display: flex; gap: 6px; opacity: 0; transition: opacity 0.12s; }
+  tr:hover .action-btns { opacity: 1; }
+  .icon-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--gray-200); background: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; transition: all 0.12s; }
+  .icon-btn:hover { background: var(--gray-100); }
+  .icon-btn.del:hover { background: var(--red-light); border-color: var(--red); }
+
+  /* EMPTY */
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--gray-500); }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-title { font-size: 15px; font-weight: 600; color: var(--gray-700); margin-bottom: 6px; }
+  .empty-sub { font-size: 13px; }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    display: none; align-items: center; justify-content: center;
+    z-index: 1000; backdrop-filter: blur(2px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: white; border-radius: var(--radius-lg);
+    width: 560px; max-width: 95vw;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    max-height: 90vh; overflow-y: auto;
+  }
+  .modal-head {
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--gray-200);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-title { font-size: 15px; font-weight: 700; color: var(--gray-900); }
+  .modal-close { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--gray-200); background: white; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+  .modal-close:hover { background: var(--gray-100); }
+  .modal-body { padding: 20px; }
+  .modal-footer { padding: 14px 20px; border-top: 1px solid var(--gray-200); display: flex; justify-content: flex-end; gap: 8px; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .form-row.full { grid-template-columns: 1fr; }
+  .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--gray-600); margin-bottom: 5px; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; border: 1px solid var(--gray-300); border-radius: var(--radius);
+    padding: 8px 10px; font-size: 13px; color: var(--gray-900); outline: none;
+    transition: border-color 0.12s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(232,101,26,0.1); }
+  .form-group textarea { resize: vertical; min-height: 60px; }
+  .pnou-toggle { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--pnou-light); border-radius: var(--radius); border: 1px solid #C9A8E8; cursor: pointer; margin-bottom: 14px; }
+  .pnou-toggle input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--pnou-color); }
+  .pnou-toggle span { font-size: 13px; font-weight: 600; color: var(--pnou-color); }
+  .pnou-toggle small { font-size: 11px; color: var(--gray-500); margin-left: auto; }
+
+  /* COMPARAISON VIEW */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .compare-col-card {
+    background: white; border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    overflow: hidden; box-shadow: var(--shadow);
+  }
+  .compare-col-head {
+    padding: 12px 14px; text-align: center;
+    font-size: 13px; font-weight: 700;
+    border-bottom: 1px solid var(--gray-200);
+  }
+  .compare-col-head.particulier { background: #EAF5EE; color: #1E7A3C; }
+  .compare-col-head.syndic { background: #E8F0FA; color: #1A4F8A; }
+  .compare-col-head.bailleur { background: #FDF1EB; color: #B85010; }
+  .compare-col-head.entreprise { background: #F3EEF9; color: #6B3D9E; }
+
+  /* NOTIFICATION */
+  .notif {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--gray-900); color: white;
+    padding: 12px 18px; border-radius: var(--radius-lg);
+    font-size: 13px; font-weight: 500;
+    box-shadow: var(--shadow-md);
+    transform: translateY(80px); opacity: 0;
+    transition: all 0.25s ease;
+    z-index: 2000;
+  }
+  .notif.show { transform: translateY(0); opacity: 1; }
+  .notif.success { background: var(--green); }
+  .notif.error { background: var(--red); }
+
+  /* TABS */
+  .view-tabs { display: flex; gap: 4px; background: var(--gray-100); padding: 4px; border-radius: var(--radius-lg); margin-bottom: 20px; width: fit-content; }
+  .view-tab { padding: 6px 16px; border-radius: var(--radius); font-size: 13px; cursor: pointer; border: none; background: none; color: var(--gray-600); font-weight: 500; transition: all 0.12s; }
+  .view-tab.active { background: white; color: var(--gray-900); box-shadow: var(--shadow); }
+
+  /* IMPORT SECTION */
+  .import-zone { border: 2px dashed var(--gray-300); border-radius: var(--radius-lg); padding: 30px; text-align: center; cursor: pointer; transition: all 0.15s; margin-bottom: 20px; }
+  .import-zone:hover { border-color: var(--orange); background: var(--orange-light); }
+  .import-zone.drag { border-color: var(--orange); background: var(--orange-light); }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .stats-row { grid-template-columns: repeat(3, 1fr); }
+    .compare-grid { grid-template-columns: repeat(2, 1fr); }
+    .sidebar { width: 180px; }
+  }
+
+  /* LOADING */
+  .loader { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--gray-200); border-top-color: var(--orange); border-radius: 50%; animation: spin 0.6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .hidden { display: none !important; }
+  .config-warning { background: #FFF8E8; border: 1px solid #F5C518; border-radius: var(--radius-lg); padding: 16px 18px; margin-bottom: 20px; font-size: 13px; color: #7A5C00; display: flex; gap: 10px; align-items: flex-start; }
+  .config-warning strong { display: block; margin-bottom: 4px; font-size: 14px; }
+  .config-area { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 20px; }
+  .config-area h3 { font-size: 14px; font-weight: 700; color: var(--gray-800); margin-bottom: 14px; }
+  .config-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-logo">SC</div>
+    <div>
+      <div class="topbar-title">Sanit Climat — Tarifs</div>
+      <div class="topbar-sub">Gestion des tarifs par type de client</div>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn-topbar" onclick="showImportModal()">⬆ Importer Excel</button>
+    <button class="btn-topbar" onclick="exportExcel()">⬇ Excel</button>
+    <button class="btn-topbar" onclick="exportPDF()">⬇ PDF</button>
+    <button class="btn-topbar orange" onclick="openAddModal()">+ Nouveau tarif</button>
+  </div>
+</div>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Vue</div>
+      <button class="nav-item active" id="nav-liste" onclick="switchView(&#39;liste&#39;)">
+        <span class="nav-icon">☰</span> Liste complète
+        <span class="nav-count" id="cnt-all">0</span>
+      </button>
+      <button class="nav-item" id="nav-compare" onclick="switchView(&#39;compare&#39;)">
+        <span class="nav-icon">⇌</span> Comparaison
+      </button>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Clients</div>
+      <button class="nav-item" id="nav-tous" onclick="filterClient(&#39;tous&#39;)">
+        <span class="nav-icon">👥</span> Tous les clients
+        <span class="nav-count" id="cnt-tous">0</span>
+      </button>
+      <button class="nav-item" id="nav-particulier" onclick="filterClient(&#39;Particulier&#39;)">
+        <div class="client-dot" style="background:#2D8A4E"></div> Particuliers
+        <span class="nav-count" id="cnt-particulier">0</span>
+      </button>
+      <button class="nav-item" id="nav-syndic" onclick="filterClient(&#39;Syndic&#39;)">
+        <div class="client-dot" style="background:#1A4F8A"></div> Syndics / Copro
+        <span class="nav-count" id="cnt-syndic">0</span>
+      </button>
+      <button class="nav-item" id="nav-bailleur" onclick="filterClient(&#39;Bailleur social&#39;)">
+        <div class="client-dot" style="background:#B85010"></div> Bailleurs sociaux
+        <span class="nav-count" id="cnt-bailleur">0</span>
+      </button>
+      <button class="nav-item" id="nav-entreprise" onclick="filterClient(&#39;Entreprise&#39;)">
+        <div class="client-dot" style="background:#6B3D9E"></div> Entreprises
+        <span class="nav-count" id="cnt-entreprise">0</span>
+      </button>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Spécial</div>
+      <button class="nav-item" id="nav-pnou" onclick="filterClient(&#39;PNOU&#39;)">
+        <span class="nav-icon" style="font-size:9px;">★</span> PNOU uniquement
+        <span class="nav-count" id="cnt-pnou">0</span>
+      </button>
+    </div>
+
+    <div class="sidebar-section" style="margin-top:auto; padding-top: 8px;">
+      <div class="sidebar-label">Paramètres</div>
+      <button class="nav-item" id="nav-config" onclick="switchView(&#39;config&#39;)">
+        <span class="nav-icon">⚙</span> Config Firebase
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main" id="main-content">
+
+    <!-- CONFIG VIEW -->
+    <div id="view-config" class="hidden">
+      <div class="config-warning">
+        <span style="font-size:18px;">⚠</span>
+        <div>
+          <strong>Configuration Firebase requise</strong>
+          Renseigne les informations de ton projet Firebase pour connecter l'application. Ces données sont sauvegardées localement dans ton navigateur.
+        </div>
+      </div>
+      <div class="config-area">
+        <h3>🔧 Paramètres Firebase</h3>
+        <div class="config-form">
+          <div class="form-group">
+            <label>API Key</label>
+            <input type="text" id="cfg-apiKey" placeholder="AIzaSy...">
+          </div>
+          <div class="form-group">
+            <label>Auth Domain</label>
+            <input type="text" id="cfg-authDomain" placeholder="projet.firebaseapp.com">
+          </div>
+          <div class="form-group">
+            <label>Database URL</label>
+            <input type="text" id="cfg-databaseURL" placeholder="https://projet-default-rtdb.europe-west1.firebasedatabase.app">
+          </div>
+          <div class="form-group">
+            <label>Project ID</label>
+            <input type="text" id="cfg-projectId" placeholder="projet-id">
+          </div>
+          <div class="form-group">
+            <label>Storage Bucket</label>
+            <input type="text" id="cfg-storageBucket" placeholder="projet.appspot.com">
+          </div>
+          <div class="form-group">
+            <label>Messaging Sender ID</label>
+            <input type="text" id="cfg-messagingSenderId" placeholder="123456789">
+          </div>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label>App ID</label>
+            <input type="text" id="cfg-appId" placeholder="1:123456789:web:abc123">
+          </div>
+        </div>
+        <div style="margin-top: 16px; display: flex; gap: 8px;">
+          <button class="btn primary" onclick="saveConfig()">💾 Sauvegarder &amp; Connecter</button>
+          <button class="btn" onclick="clearConfig()">🗑 Effacer config</button>
+        </div>
+        <div id="config-status" style="margin-top:12px; font-size:13px;"></div>
+      </div>
+    </div>
+
+    <!-- LISTE VIEW -->
+    <div id="view-liste">
+      <div id="no-firebase-warn" class="config-warning">
+        <span style="font-size:18px;">⚡</span>
+        <div>
+          <strong>Firebase non configuré</strong>
+          Les données sont stockées temporairement dans le navigateur. <a href="file:///C:/Users/Ga%C3%ABlle%20RIBES/Downloads/sanit_climat_tarifs_v2_2.html#" onclick="switchView(&#39;config&#39;); return false;" style="color: var(--orange);">Configurer Firebase →</a>
+        </div>
+      </div>
+
+      <div class="stats-row" id="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">Total prestations</div>
+          <div class="stat-value" id="stat-total">0</div>
+          <div class="stat-sub">tous types</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Particuliers</div>
+          <div class="stat-value" id="stat-part" style="color:#2D8A4E">0</div>
+          <div class="stat-sub">tarifs</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Syndics / Copro</div>
+          <div class="stat-value" id="stat-synd" style="color:#1A4F8A">0</div>
+          <div class="stat-sub">tarifs</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Bailleurs sociaux</div>
+          <div class="stat-value" id="stat-bail" style="color:#B85010">0</div>
+          <div class="stat-sub">tarifs</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">PNOU</div>
+          <div class="stat-value" id="stat-pnou" style="color:var(--pnou-color)">0</div>
+          <div class="stat-sub">tarifs marqués</div>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="search-input" id="search-input" placeholder="Rechercher une prestation, catégorie, référence…" oninput="renderTable()">
+        </div>
+        <div class="toolbar-divider"></div>
+        <select class="filter-select" id="filter-categorie" onchange="renderTable()"><option value="">Toutes catégories</option></select>
+        <select class="filter-select" id="filter-tva" onchange="renderTable()">
+          <option value="">TVA (toutes)</option>
+          <option value="10">TVA 10%</option>
+          <option value="20">TVA 20%</option>
+        </select>
+        <button class="btn small" onclick="resetFilters()">✕ Effacer</button>
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <div class="table-title" id="table-title">Tous les tarifs — 0 résultat</div>
+          <div class="table-actions">
+            <button class="btn small" onclick="exportVisiblePDF()">⬇ PDF vue actuelle</button>
+          </div>
+        </div>
+        <div style="overflow-x: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:36px;"></th>
+                <th class="sortable" onclick="sortBy(&#39;designation&#39;)">Désignation ▴</th>
+                <th class="sortable" onclick="sortBy(&#39;categorie&#39;)">Catégorie</th>
+                <th class="sortable" onclick="sortBy(&#39;typeClient&#39;)">Type client</th>
+                <th>Ref.</th>
+                <th class="sortable" onclick="sortBy(&#39;prixHT&#39;)">Prix HT</th>
+                <th>TVA</th>
+                <th class="sortable" onclick="sortBy(&#39;prixTTC&#39;)">Prix TTC</th>
+                <th>Unité</th>
+                <th style="width:80px;"></th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+        <div id="empty-state" class="empty-state">
+          <div class="empty-icon">📋</div>
+          <div class="empty-title">Aucun tarif trouvé</div>
+          <div class="empty-sub">Modifiez votre recherche ou ajoutez un nouveau tarif</div>
+        </div>
+        <div id="table-loader" style="text-align:center; padding: 40px;" class="hidden">
+          <div class="loader"></div>
+          <div style="margin-top: 10px; font-size: 13px; color: var(--gray-500);">Chargement…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMPARE VIEW -->
+    <div id="view-compare" class="hidden">
+      <div style="margin-bottom: 16px;">
+        <div class="toolbar">
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" id="search-compare" placeholder="Filtrer par désignation…" oninput="renderCompare()">
+          </div>
+          <div class="toolbar-divider"></div>
+          <select class="filter-select" id="filter-compare-cat" onchange="renderCompare()"><option value="">Toutes catégories</option></select>
+        </div>
+      </div>
+      <div id="compare-content"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL AJOUT / EDIT -->
+<div class="modal-overlay" id="modal-tarif">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-title">Nouveau tarif</div>
+      <button class="modal-close" onclick="closeModal(&#39;modal-tarif&#39;)">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="pnou-toggle" onclick="togglePnou()">
+        <input type="checkbox" id="chk-pnou">
+        <span>★ PNOU — Petits travaux Non contractuels</span>
+        <small>Cliquez pour activer</small>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="grid-column: 1 / -1;">
+          <label>Désignation *</label>
+          <input type="text" id="f-designation" placeholder="Ex: Entretien chaudière gaz standard">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Catégorie *</label>
+          <input type="text" id="f-categorie" placeholder="Chaudière, VMC, Plomberie…" list="cat-list">
+          <datalist id="cat-list"></datalist>
+        </div>
+        <div class="form-group">
+          <label>Type de client *</label>
+          <select id="f-typeClient">
+            <option value="">-- Choisir --</option>
+            <option value="Particulier">Particulier</option>
+            <option value="Syndic">Syndic / Copropriété</option>
+            <option value="Bailleur social">Bailleur social</option>
+            <option value="Entreprise">Entreprise / Tertiaire</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Référence</label>
+          <input type="text" id="f-reference" placeholder="REF-001">
+        </div>
+        <div class="form-group">
+          <label>Unité</label>
+          <select id="f-unite">
+            <option value="forfait">Forfait</option>
+            <option value="heure">Heure</option>
+            <option value="unité">Unité</option>
+            <option value="m²">m²</option>
+            <option value="ml">ml</option>
+            <option value="visite">Visite</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Prix HT (€) *</label>
+          <input type="number" id="f-prixHT" step="0.01" min="0" placeholder="0.00" oninput="calcTTC()">
+        </div>
+        <div class="form-group">
+          <label>TVA</label>
+          <select id="f-tva" onchange="calcTTC()">
+            <option value="10">10% (résidentiel)</option>
+            <option value="20">20% (climatisation / neuf)</option>
+            <option value="0">0% (exonéré)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Prix TTC (calculé)</label>
+          <input type="text" id="f-prixTTC" readonly="" style="background: var(--gray-100); color: var(--orange); font-weight: 700;">
+        </div>
+        <div class="form-group">
+          <label>Remise éventuelle (%)</label>
+          <input type="number" id="f-remise" min="0" max="100" placeholder="0" oninput="calcTTC()">
+        </div>
+      </div>
+      <div class="form-row full">
+        <div class="form-group">
+          <label>Notes / Conditions</label>
+          <textarea id="f-notes" placeholder="Conditions particulières, détails…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal(&#39;modal-tarif&#39;)">Annuler</button>
+      <button class="btn primary" onclick="saveTarif()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL IMPORT -->
+<div class="modal-overlay" id="modal-import">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Importer depuis Excel</div>
+      <button class="modal-close" onclick="closeModal(&#39;modal-import&#39;)">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="import-zone" id="import-zone" onclick="document.getElementById(&#39;file-input&#39;).click()" ondragover="e=&gt;e.preventDefault()" ondrop="handleDrop(event)">
+        <div style="font-size: 32px; margin-bottom: 8px;">📂</div>
+        <div style="font-size: 14px; font-weight: 600; color: var(--gray-700); margin-bottom: 4px;">Cliquez ou glissez votre fichier Excel</div>
+        <div style="font-size: 12px; color: var(--gray-500);">.xlsx ou .xls acceptés</div>
+      </div>
+      <input type="file" id="file-input" accept=".xlsx,.xls" class="hidden" onchange="handleFileSelect(event)">
+      <div id="import-preview" class="hidden">
+        <div style="font-size: 13px; font-weight: 600; margin-bottom: 10px;">Colonnes détectées — Associez-les :</div>
+        <div id="mapping-fields"></div>
+        <div style="margin-top: 14px; padding: 10px 14px; background: var(--blue-light); border-radius: var(--radius); font-size: 12px; color: var(--blue-mid);">
+          <strong>Aperçu :</strong> <span id="import-count">0</span> ligne(s) détectée(s)
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal(&#39;modal-import&#39;)">Annuler</button>
+      <button class="btn primary hidden" id="btn-confirm-import" onclick="confirmImport()">✅ Importer les données</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIFICATION -->
+<div class="notif" id="notif"></div>
+
+<script>
+/* ─────────────────────────────────────────────
+   FIREBASE CONFIG & INIT
+───────────────────────────────────────────── */
+let db = null;
+let firebaseConfigured = false;
+const FIREBASE_PATH = 'tarifs_sanit';
+
+function loadConfig() {
+  try {
+    return JSON.parse(localStorage.getItem('sc_tarifs_firebase_config') || 'null');
+  } catch(e) { return null; }
+}
+
+function initFirebase(config) {
+  try {
+    if (firebase.apps.length) firebase.apps.forEach(app => app.delete());
+    firebase.initializeApp(config);
+    db = firebase.database();
+    firebaseConfigured = true;
+    return true;
+  } catch(e) {
+    console.error('Firebase init error:', e);
+    return false;
+  }
+}
+
+function saveConfig() {
+  const config = {
+    apiKey: document.getElementById('cfg-apiKey').value.trim(),
+    authDomain: document.getElementById('cfg-authDomain').value.trim(),
+    databaseURL: document.getElementById('cfg-databaseURL').value.trim(),
+    projectId: document.getElementById('cfg-projectId').value.trim(),
+    storageBucket: document.getElementById('cfg-storageBucket').value.trim(),
+    messagingSenderId: document.getElementById('cfg-messagingSenderId').value.trim(),
+    appId: document.getElementById('cfg-appId').value.trim()
+  };
+  if (!config.apiKey || !config.databaseURL) {
+    document.getElementById('config-status').innerHTML = '<span style="color:var(--red)">⚠ API Key et Database URL obligatoires</span>';
+    return;
+  }
+  localStorage.setItem('sc_tarifs_firebase_config', JSON.stringify(config));
+  const ok = initFirebase(config);
+  if (ok) {
+    document.getElementById('config-status').innerHTML = '<span style="color:var(--green)">✅ Connecté ! Redirection…</span>';
+    setTimeout(() => { switchView('liste'); loadTarifs(); }, 800);
+  } else {
+    document.getElementById('config-status').innerHTML = '<span style="color:var(--red)">❌ Erreur de connexion. Vérifiez la configuration.</span>';
+  }
+}
+
+function clearConfig() {
+  localStorage.removeItem('sc_tarifs_firebase_config');
+  db = null; firebaseConfigured = false;
+  showNotif('Configuration effacée', 'error');
+}
+
+/* ─────────────────────────────────────────────
+   DATA STORE (local fallback)
+───────────────────────────────────────────── */
+let tarifs = [];
+let currentFilter = 'tous';
+let currentView = 'liste';
+let sortField = 'designation';
+let sortAsc = true;
+let editingId = null;
+let importData = [];
+let importHeaders = [];
+
+function getTarifsRef() {
+  return db ? db.ref(FIREBASE_PATH) : null;
+}
+
+function loadTarifs() {
+  document.getElementById('table-loader').classList.remove('hidden');
+  document.getElementById('tbody').innerHTML = '';
+  if (db) {
+    getTarifsRef().on('value', snap => {
+      tarifs = [];
+      const val = snap.val() || {};
+      Object.entries(val).forEach(([k, v]) => tarifs.push({...v, _id: k}));
+      document.getElementById('table-loader').classList.add('hidden');
+      updateStats();
+      renderTable();
+      updateCatFilters();
+    });
+  } else {
+    // fallback local
+    const saved = localStorage.getItem('sc_tarifs_local');
+    tarifs = saved ? JSON.parse(saved) : [];
+    tarifs.forEach((t, i) => { if (!t._id) t._id = 'local_' + i; });
+    document.getElementById('table-loader').classList.add('hidden');
+    document.getElementById('no-firebase-warn').classList.remove('hidden');
+    updateStats();
+    renderTable();
+    updateCatFilters();
+  }
+}
+
+function saveLocal() {
+  localStorage.setItem('sc_tarifs_local', JSON.stringify(tarifs));
+}
+
+/* ─────────────────────────────────────────────
+   CRUD
+───────────────────────────────────────────── */
+function saveTarif() {
+  const designation = document.getElementById('f-designation').value.trim();
+  const categorie = document.getElementById('f-categorie').value.trim();
+  const typeClient = document.getElementById('f-typeClient').value;
+  const prixHT = parseFloat(document.getElementById('f-prixHT').value);
+
+  if (!designation || !categorie || !typeClient || isNaN(prixHT)) {
+    showNotif('Remplissez les champs obligatoires (*)', 'error'); return;
+  }
+
+  const tva = parseInt(document.getElementById('f-tva').value);
+  const remise = parseFloat(document.getElementById('f-remise').value) || 0;
+  const prixHTremise = prixHT * (1 - remise / 100);
+  const prixTTC = prixHTremise * (1 + tva / 100);
+
+  const data = {
+    designation,
+    categorie,
+    typeClient,
+    reference: document.getElementById('f-reference').value.trim(),
+    unite: document.getElementById('f-unite').value,
+    prixHT: Math.round(prixHT * 100) / 100,
+    tva,
+    remise,
+    prixTTC: Math.round(prixTTC * 100) / 100,
+    notes: document.getElementById('f-notes').value.trim(),
+    isPNOU: document.getElementById('chk-pnou').checked,
+    updatedAt: new Date().toISOString()
+  };
+
+  if (!data.createdAt) data.createdAt = new Date().toISOString();
+
+  if (db) {
+    const ref = editingId ? getTarifsRef().child(editingId) : getTarifsRef().push();
+    if (!editingId) data.createdAt = new Date().toISOString();
+    ref.set(data).then(() => {
+      showNotif(editingId ? 'Tarif mis à jour ✓' : 'Tarif ajouté ✓', 'success');
+      closeModal('modal-tarif');
+    }).catch(e => showNotif('Erreur Firebase: ' + e.message, 'error'));
+  } else {
+    if (editingId) {
+      const idx = tarifs.findIndex(t => t._id === editingId);
+      if (idx >= 0) tarifs[idx] = {...data, _id: editingId};
+    } else {
+      data._id = 'local_' + Date.now();
+      tarifs.push(data);
+    }
+    saveLocal();
+    updateStats(); renderTable(); updateCatFilters();
+    showNotif(editingId ? 'Tarif mis à jour ✓' : 'Tarif ajouté ✓', 'success');
+    closeModal('modal-tarif');
+  }
+}
+
+function deleteTarif(id) {
+  if (!confirm('Supprimer ce tarif ?')) return;
+  if (db) {
+    getTarifsRef().child(id).remove().then(() => showNotif('Tarif supprimé', 'error'));
+  } else {
+    tarifs = tarifs.filter(t => t._id !== id);
+    saveLocal();
+    updateStats(); renderTable(); updateCatFilters();
+    showNotif('Tarif supprimé');
+  }
+}
+
+function editTarif(id) {
+  const t = tarifs.find(t => t._id === id);
+  if (!t) return;
+  editingId = id;
+  document.getElementById('modal-title').textContent = 'Modifier le tarif';
+  document.getElementById('f-designation').value = t.designation || '';
+  document.getElementById('f-categorie').value = t.categorie || '';
+  document.getElementById('f-typeClient').value = t.typeClient || '';
+  document.getElementById('f-reference').value = t.reference || '';
+  document.getElementById('f-unite').value = t.unite || 'forfait';
+  document.getElementById('f-prixHT').value = t.prixHT || '';
+  document.getElementById('f-tva').value = t.tva !== undefined ? t.tva : 10;
+  document.getElementById('f-remise').value = t.remise || '';
+  document.getElementById('f-notes').value = t.notes || '';
+  document.getElementById('chk-pnou').checked = !!t.isPNOU;
+  calcTTC();
+  document.getElementById('modal-tarif').classList.add('open');
+}
+
+/* ─────────────────────────────────────────────
+   RENDER TABLE
+───────────────────────────────────────────── */
+function getFilteredTarifs() {
+  let data = [...tarifs];
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const cat = document.getElementById('filter-categorie').value;
+  const tva = document.getElementById('filter-tva').value;
+
+  if (currentFilter === 'PNOU') data = data.filter(t => t.isPNOU);
+  else if (currentFilter !== 'tous') data = data.filter(t => t.typeClient === currentFilter);
+  if (q) data = data.filter(t =>
+    (t.designation||'').toLowerCase().includes(q) ||
+    (t.categorie||'').toLowerCase().includes(q) ||
+    (t.reference||'').toLowerCase().includes(q) ||
+    (t.notes||'').toLowerCase().includes(q)
+  );
+  if (cat) data = data.filter(t => t.categorie === cat);
+  if (tva) data = data.filter(t => String(t.tva) === tva);
+
+  data.sort((a, b) => {
+    let va = a[sortField] || '', vb = b[sortField] || '';
+    if (typeof va === 'number') return sortAsc ? va - vb : vb - va;
+    return sortAsc ? String(va).localeCompare(String(vb), 'fr') : String(vb).localeCompare(String(va), 'fr');
+  });
+  return data;
+}
+
+function renderTable() {
+  const data = getFilteredTarifs();
+  const tbody = document.getElementById('tbody');
+  const empty = document.getElementById('empty-state');
+
+  if (!data.length) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    document.getElementById('table-title').textContent = `${getFilterLabel()} — 0 résultat`;
+    return;
+  }
+  empty.classList.add('hidden');
+  document.getElementById('table-title').textContent = `${getFilterLabel()} — ${data.length} tarif(s)`;
+
+  tbody.innerHTML = data.map(t => `
+    <tr>
+      <td style="text-align:center;">
+        ${t.isPNOU ? '<span title="PNOU" style="font-size:14px; color:var(--pnou-color);">★</span>' : ''}
+      </td>
+      <td>
+        <div style="font-weight:600; font-size:13px;">${esc(t.designation)}</div>
+        ${t.notes ? `<div style="font-size:11px; color:var(--gray-500); margin-top:2px;">${esc(t.notes.substring(0,60))}${t.notes.length>60?'…':''}</div>` : ''}
+      </td>
+      <td><span style="font-size:12px; background:var(--gray-100); padding:3px 8px; border-radius:4px; color:var(--gray-700);">${esc(t.categorie)}</span></td>
+      <td>${clientBadge(t.typeClient, t.isPNOU)}</td>
+      <td style="font-size:12px; color:var(--gray-500);">${esc(t.reference)}</td>
+      <td class="prix ht">${formatPrix(t.prixHT)} €</td>
+      <td style="font-size:12px; color:var(--gray-600);">${t.tva}%</td>
+      <td class="prix">${formatPrix(t.prixTTC)} €</td>
+      <td style="font-size:12px; color:var(--gray-500);">${esc(t.unite)}</td>
+      <td>
+        <div class="action-btns">
+          <button class="icon-btn" onclick="editTarif('${t._id}')" title="Modifier">✏</button>
+          <button class="icon-btn del" onclick="deleteTarif('${t._id}')" title="Supprimer">🗑</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function clientBadge(type, isPNOU) {
+  const map = {
+    'Particulier': 'particulier',
+    'Syndic': 'syndic',
+    'Bailleur social': 'bailleur',
+    'Entreprise': 'entreprise'
+  };
+  const cls = map[type] || 'particulier';
+  const pnouTag = isPNOU ? `<span class="badge pnou" style="margin-left:4px;">★ PNOU</span>` : '';
+  return `<span class="badge ${cls}">${esc(type)}</span>${pnouTag}`;
+}
+
+/* ─────────────────────────────────────────────
+   COMPARE VIEW
+───────────────────────────────────────────── */
+function renderCompare() {
+  const q = document.getElementById('search-compare').value.toLowerCase();
+  const cat = document.getElementById('filter-compare-cat').value;
+  const types = ['Particulier', 'Syndic', 'Bailleur social', 'Entreprise'];
+  const typeClass = { 'Particulier': 'particulier', 'Syndic': 'syndic', 'Bailleur social': 'bailleur', 'Entreprise': 'entreprise' };
+
+  // Group prestations
+  let allDesig = [...new Set(tarifs.map(t => t.designation))].sort();
+  if (q) allDesig = allDesig.filter(d => d.toLowerCase().includes(q));
+  if (cat) allDesig = allDesig.filter(d => {
+    const t = tarifs.find(x => x.designation === d);
+    return t && t.categorie === cat;
+  });
+
+  if (!allDesig.length) {
+    document.getElementById('compare-content').innerHTML = '<div class="empty-state"><div class="empty-icon">⇌</div><div class="empty-title">Aucune prestation à comparer</div></div>';
+    return;
+  }
+
+  // Group by category
+  const byCat = {};
+  allDesig.forEach(d => {
+    const t = tarifs.find(x => x.designation === d);
+    if (!t) return;
+    if (!byCat[t.categorie]) byCat[t.categorie] = [];
+    byCat[t.categorie].push(d);
+  });
+
+  let html = `
+    <div style="background:white; border:1px solid var(--gray-200); border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow);">
+      <div style="overflow-x:auto;">
+        <table style="width:100%; min-width:700px;">
+          <thead>
+            <tr style="background:var(--gray-50);">
+              <th style="padding:10px 14px; text-align:left; font-size:11px; font-weight:700; color:var(--gray-500); text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--gray-200); min-width:200px;">Prestation</th>
+              ${types.map(tp => `
+                <th style="padding:10px 14px; text-align:center; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--gray-200);">
+                  <span class="badge ${typeClass[tp]}">${tp}</span>
+                </th>
+              `).join('')}
+            </tr>
+          </thead>
+          <tbody>
+  `;
+
+  Object.entries(byCat).forEach(([cat, desigs]) => {
+    html += `<tr><td colspan="5" style="padding:8px 14px; background:var(--gray-50); font-size:11px; font-weight:700; color:var(--gray-500); text-transform:uppercase; letter-spacing:0.5px; border-top:1px solid var(--gray-200);">${esc(cat)}</td></tr>`;
+    desigs.forEach(d => {
+      html += `<tr>`;
+      html += `<td style="padding:10px 14px; font-size:13px;">`;
+      const sample = tarifs.find(x => x.designation === d);
+      if (sample?.isPNOU) html += `<span style="color:var(--pnou-color); font-size:11px; margin-right:4px;">★</span>`;
+      html += `<span style="font-weight:500;">${esc(d)}</span>`;
+      if (sample?.unite && sample.unite !== 'forfait') html += ` <span style="font-size:11px; color:var(--gray-400);">/ ${esc(sample.unite)}</span>`;
+      html += `</td>`;
+      types.forEach(tp => {
+        const t = tarifs.find(x => x.designation === d && x.typeClient === tp);
+        if (t) {
+          html += `<td style="padding:10px 14px; text-align:center; vertical-align:middle;">
+            <div style="font-weight:700; font-size:14px; color:var(--gray-900);">${formatPrix(t.prixTTC)} €</div>
+            <div style="font-size:10px; color:var(--gray-400);">HT: ${formatPrix(t.prixHT)} € · TVA ${t.tva}%</div>
+            ${t.remise ? `<div style="font-size:10px; color:var(--green);">-${t.remise}%</div>` : ''}
+          </td>`;
+        } else {
+          html += `<td style="padding:10px 14px; text-align:center; color:var(--gray-300); font-size:18px;">—</td>`;
+        }
+      });
+      html += `</tr>`;
+    });
+  });
+
+  html += `</tbody></table></div></div>`;
+  document.getElementById('compare-content').innerHTML = html;
+}
+
+/* ─────────────────────────────────────────────
+   STATS & FILTERS
+───────────────────────────────────────────── */
+function updateStats() {
+  const cnt = (type) => tarifs.filter(t => t.typeClient === type).length;
+  document.getElementById('stat-total').textContent = tarifs.length;
+  document.getElementById('stat-part').textContent = cnt('Particulier');
+  document.getElementById('stat-synd').textContent = cnt('Syndic');
+  document.getElementById('stat-bail').textContent = cnt('Bailleur social');
+  document.getElementById('stat-pnou').textContent = tarifs.filter(t => t.isPNOU).length;
+
+  document.getElementById('cnt-all').textContent = tarifs.length;
+  document.getElementById('cnt-tous').textContent = tarifs.length;
+  document.getElementById('cnt-particulier').textContent = cnt('Particulier');
+  document.getElementById('cnt-syndic').textContent = cnt('Syndic');
+  document.getElementById('cnt-bailleur').textContent = cnt('Bailleur social');
+  document.getElementById('cnt-entreprise').textContent = tarifs.filter(t => t.typeClient === 'Entreprise').length;
+  document.getElementById('cnt-pnou').textContent = tarifs.filter(t => t.isPNOU).length;
+}
+
+function updateCatFilters() {
+  const cats = [...new Set(tarifs.map(t => t.categorie).filter(Boolean))].sort();
+  ['filter-categorie', 'filter-compare-cat'].forEach(id => {
+    const sel = document.getElementById(id);
+    const val = sel.value;
+    sel.innerHTML = '<option value="">Toutes catégories</option>' + cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+    sel.value = val;
+  });
+  // Datalist
+  document.getElementById('cat-list').innerHTML = cats.map(c => `<option value="${esc(c)}">`).join('');
+}
+
+function filterClient(type) {
+  currentFilter = type;
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const id = type === 'tous' ? 'nav-tous' : type === 'PNOU' ? 'nav-pnou' :
+    type === 'Particulier' ? 'nav-particulier' :
+    type === 'Syndic' ? 'nav-syndic' :
+    type === 'Bailleur social' ? 'nav-bailleur' : 'nav-entreprise';
+  document.getElementById(id)?.classList.add('active');
+  renderTable();
+}
+
+function resetFilters() {
+  document.getElementById('search-input').value = '';
+  document.getElementById('filter-categorie').value = '';
+  document.getElementById('filter-tva').value = '';
+  renderTable();
+}
+
+function sortBy(field) {
+  if (sortField === field) sortAsc = !sortAsc;
+  else { sortField = field; sortAsc = true; }
+  renderTable();
+}
+
+function getFilterLabel() {
+  if (currentFilter === 'tous') return 'Tous les tarifs';
+  if (currentFilter === 'PNOU') return 'Tarifs PNOU';
+  return currentFilter;
+}
+
+/* ─────────────────────────────────────────────
+   VIEWS
+───────────────────────────────────────────── */
+function switchView(view) {
+  currentView = view;
+  document.getElementById('view-liste').classList.toggle('hidden', view !== 'liste');
+  document.getElementById('view-compare').classList.toggle('hidden', view !== 'compare');
+  document.getElementById('view-config').classList.toggle('hidden', view !== 'config');
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  if (view === 'liste') {
+    document.getElementById('nav-liste').classList.add('active');
+    filterClient(currentFilter);
+  }
+  if (view === 'compare') {
+    document.getElementById('nav-compare').classList.add('active');
+    renderCompare();
+  }
+  if (view === 'config') {
+    document.getElementById('nav-config').classList.add('active');
+    loadConfigForm();
+  }
+}
+
+function loadConfigForm() {
+  const cfg = loadConfig();
+  if (!cfg) return;
+  Object.entries(cfg).forEach(([k, v]) => {
+    const el = document.getElementById('cfg-' + k);
+    if (el) el.value = v;
+  });
+}
+
+/* ─────────────────────────────────────────────
+   MODAL HELPERS
+───────────────────────────────────────────── */
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modal-title').textContent = 'Nouveau tarif';
+  ['f-designation','f-categorie','f-reference','f-prixHT','f-prixTTC','f-notes','f-remise'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('f-typeClient').value = '';
+  document.getElementById('f-tva').value = '10';
+  document.getElementById('f-unite').value = 'forfait';
+  document.getElementById('chk-pnou').checked = false;
+  document.getElementById('modal-tarif').classList.add('open');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+function togglePnou() {
+  const chk = document.getElementById('chk-pnou');
+  chk.checked = !chk.checked;
+}
+
+function calcTTC() {
+  const ht = parseFloat(document.getElementById('f-prixHT').value) || 0;
+  const tva = parseInt(document.getElementById('f-tva').value) || 10;
+  const remise = parseFloat(document.getElementById('f-remise').value) || 0;
+  const htRemise = ht * (1 - remise / 100);
+  const ttc = htRemise * (1 + tva / 100);
+  document.getElementById('f-prixTTC').value = ttc > 0 ? formatPrix(ttc) + ' €' : '';
+}
+
+/* ─────────────────────────────────────────────
+   IMPORT EXCEL
+───────────────────────────────────────────── */
+function showImportModal() {
+  document.getElementById('import-preview').classList.add('hidden');
+  document.getElementById('btn-confirm-import').classList.add('hidden');
+  document.getElementById('modal-import').classList.add('open');
+}
+
+function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (file) processExcel(file);
+}
+
+function handleDrop(event) {
+  event.preventDefault();
+  const file = event.dataTransfer.files[0];
+  if (file) processExcel(file);
+}
+
+function processExcel(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const wb = XLSX.read(e.target.result, { type: 'binary' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+    if (rows.length < 2) { showNotif('Fichier vide ou invalide', 'error'); return; }
+    importHeaders = rows[0].map(String);
+    importData = rows.slice(1).filter(r => r.some(c => c));
+    renderImportMapping();
+  };
+  reader.readAsBinaryString(file);
+}
+
+function renderImportMapping() {
+  const fields = [
+    { id: 'mp-designation', label: 'Désignation *', required: true },
+    { id: 'mp-categorie', label: 'Catégorie *', required: true },
+    { id: 'mp-typeClient', label: 'Type client', required: false },
+    { id: 'mp-reference', label: 'Référence', required: false },
+    { id: 'mp-prixHT', label: 'Prix HT', required: false },
+    { id: 'mp-tva', label: 'TVA (%)', required: false },
+    { id: 'mp-unite', label: 'Unité', required: false },
+    { id: 'mp-notes', label: 'Notes', required: false }
+  ];
+  const opts = ['<option value="">— Ignorer —</option>', ...importHeaders.map((h, i) => `<option value="${i}">${h}</option>`)].join('');
+  document.getElementById('mapping-fields').innerHTML = fields.map(f =>
+    `<div class="form-row" style="margin-bottom:8px;">
+      <div class="form-group" style="display:flex; align-items:center; gap:10px;">
+        <label style="min-width:130px; margin:0;">${f.label}</label>
+        <select id="${f.id}" style="flex:1; border:1px solid var(--gray-300); border-radius:var(--radius); padding:6px 8px; font-size:13px;">${opts}</select>
+      </div>
+    </div>`
+  ).join('');
+
+  // Auto-match
+  const autoMatch = { designation: 'désignation', categorie: 'catégorie', typeClient: 'type', reference: 'ref', prixHT: 'ht', tva: 'tva', unite: 'unité', notes: 'note' };
+  Object.entries(autoMatch).forEach(([key, kw]) => {
+    const idx = importHeaders.findIndex(h => h.toLowerCase().includes(kw));
+    if (idx >= 0) document.getElementById('mp-' + key).value = idx;
+  });
+
+  document.getElementById('import-count').textContent = importData.length;
+  document.getElementById('import-preview').classList.remove('hidden');
+  document.getElementById('btn-confirm-import').classList.remove('hidden');
+}
+
+function confirmImport() {
+  const get = (id) => { const v = document.getElementById(id).value; return v !== '' ? parseInt(v) : null; };
+  const maps = {
+    designation: get('mp-designation'),
+    categorie: get('mp-categorie'),
+    typeClient: get('mp-typeClient'),
+    reference: get('mp-reference'),
+    prixHT: get('mp-prixHT'),
+    tva: get('mp-tva'),
+    unite: get('mp-unite'),
+    notes: get('mp-notes')
+  };
+  if (maps.designation === null || maps.categorie === null) {
+    showNotif('Mappez au minimum Désignation et Catégorie', 'error'); return;
+  }
+
+  const now = new Date().toISOString();
+  const newTarifs = importData.map(row => {
+    const ht = parseFloat(String(row[maps.prixHT] || 0).replace(',', '.')) || 0;
+    const tva = parseInt(row[maps.tva]) || 10;
+    const ttc = ht * (1 + tva / 100);
+    const typeRaw = String(row[maps.typeClient] || '').toLowerCase();
+    let typeClient = 'Particulier';
+    if (typeRaw.includes('syndic') || typeRaw.includes('copro')) typeClient = 'Syndic';
+    else if (typeRaw.includes('bailleur') || typeRaw.includes('social')) typeClient = 'Bailleur social';
+    else if (typeRaw.includes('entreprise') || typeRaw.includes('tertiaire')) typeClient = 'Entreprise';
+    return {
+      designation: String(row[maps.designation] || '').trim(),
+      categorie: String(row[maps.categorie] || '').trim(),
+      typeClient,
+      reference: maps.reference !== null ? String(row[maps.reference] || '').trim() : '',
+      prixHT: Math.round(ht * 100) / 100,
+      tva,
+      prixTTC: Math.round(ttc * 100) / 100,
+      unite: maps.unite !== null ? String(row[maps.unite] || 'forfait') : 'forfait',
+      notes: maps.notes !== null ? String(row[maps.notes] || '').trim() : '',
+      isPNOU: false,
+      createdAt: now,
+      updatedAt: now
+    };
+  }).filter(t => t.designation && t.categorie);
+
+  if (db) {
+    const batch = {};
+    newTarifs.forEach(t => { const key = getTarifsRef().push().key; batch[key] = t; });
+    getTarifsRef().update(batch).then(() => {
+      showNotif(`${newTarifs.length} tarifs importés ✓`, 'success');
+      closeModal('modal-import');
+    }).catch(e => showNotif('Erreur: ' + e.message, 'error'));
+  } else {
+    newTarifs.forEach(t => { t._id = 'local_' + Date.now() + Math.random(); tarifs.push(t); });
+    saveLocal(); updateStats(); renderTable(); updateCatFilters();
+    showNotif(`${newTarifs.length} tarifs importés ✓`, 'success');
+    closeModal('modal-import');
+  }
+}
+
+/* ─────────────────────────────────────────────
+   EXPORTS
+───────────────────────────────────────────── */
+function exportExcel() {
+  const data = tarifs.map(t => ({
+    'Désignation': t.designation,
+    'Catégorie': t.categorie,
+    'Type client': t.typeClient,
+    'PNOU': t.isPNOU ? 'Oui' : '',
+    'Référence': t.reference,
+    'Prix HT (€)': t.prixHT,
+    'TVA (%)': t.tva,
+    'Prix TTC (€)': t.prixTTC,
+    'Unité': t.unite,
+    'Remise (%)': t.remise || '',
+    'Notes': t.notes
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Tarifs');
+  XLSX.writeFile(wb, `Sanit_Climat_Tarifs_${new Date().toLocaleDateString('fr-FR').replace(/\//g,'-')}.xlsx`);
+  showNotif('Export Excel téléchargé ✓', 'success');
+}
+
+function exportPDF() { exportPDFFiltered(tarifs, 'Sanit Climat — Tous les tarifs'); }
+function exportVisiblePDF() { exportPDFFiltered(getFilteredTarifs(), `Sanit Climat — ${getFilterLabel()}`); }
+
+function exportPDFFiltered(data, title) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  doc.setFontSize(14);
+  doc.setTextColor(26, 46, 74);
+  doc.text('SANIT CLIMAT — ' + title.toUpperCase(), 14, 15);
+  doc.setFontSize(9);
+  doc.setTextColor(120);
+  doc.text(`Édité le ${new Date().toLocaleDateString('fr-FR')}`, 14, 21);
+
+  doc.autoTable({
+    startY: 26,
+    head: [['Désignation', 'Catégorie', 'Type client', 'PNOU', 'Réf.', 'Prix HT', 'TVA', 'Prix TTC', 'Unité']],
+    body: data.map(t => [
+      t.designation, t.categorie, t.typeClient,
+      t.isPNOU ? '★' : '',
+      t.reference || '',
+      formatPrix(t.prixHT) + ' €',
+      t.tva + '%',
+      formatPrix(t.prixTTC) + ' €',
+      t.unite
+    ]),
+    headStyles: { fillColor: [26, 46, 74], textColor: 255, fontSize: 9, fontStyle: 'bold' },
+    bodyStyles: { fontSize: 8, textColor: 50 },
+    alternateRowStyles: { fillColor: [248, 249, 250] },
+    columnStyles: { 3: { halign: 'center', textColor: [123, 79, 166] }, 5: { halign: 'right' }, 7: { halign: 'right', fontStyle: 'bold' } },
+    styles: { overflow: 'linebreak', cellPadding: 2.5 }
+  });
+
+  doc.save(`Sanit_Climat_Tarifs_${new Date().toLocaleDateString('fr-FR').replace(/\//g,'-')}.pdf`);
+  showNotif('Export PDF téléchargé ✓', 'success');
+}
+
+/* ─────────────────────────────────────────────
+   UTILS
+───────────────────────────────────────────── */
+function formatPrix(v) {
+  if (v === undefined || v === null || v === '') return '—';
+  return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+}
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+let notifTimer;
+function showNotif(msg, type) {
+  const el = document.getElementById('notif');
+  el.textContent = msg;
+  el.className = 'notif show' + (type ? ' ' + type : '');
+  clearTimeout(notifTimer);
+  notifTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+/* ─────────────────────────────────────────────
+   INIT
+───────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  const cfg = loadConfig();
+  if (cfg && cfg.apiKey) {
+    const ok = initFirebase(cfg);
+    if (!ok) showNotif('Erreur Firebase — vérifiez la config', 'error');
+  }
+  loadTarifs();
+  document.getElementById('modal-tarif').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('modal-tarif'); });
+  document.getElementById('modal-import').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('modal-import'); });
+});
+</script>
+
+
+</body></html>
