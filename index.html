@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0076)file:///C:/Users/Ga%C3%ABlle%20RIBES/Downloads/sanit_climat_tarifs_v2_3.html -->
+<!-- saved from url=(0076)file:///C:/Users/Ga%C3%ABlle%20RIBES/Downloads/sanit_climat_tarifs_v2_4.html -->
 <html lang="fr"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -423,11 +423,11 @@
 
     <!-- LISTE VIEW -->
     <div id="view-liste">
-      <div id="no-firebase-warn" class="config-warning">
+      <div id="no-firebase-warn" class="config-warning hidden" style="display:none!important">
         <span style="font-size:18px;">⚡</span>
         <div>
           <strong>Firebase non configuré</strong>
-          Les données sont stockées temporairement dans le navigateur. <a href="file:///C:/Users/Ga%C3%ABlle%20RIBES/Downloads/sanit_climat_tarifs_v2_3.html#" onclick="switchView(&#39;config&#39;); return false;" style="color: var(--orange);">Configurer Firebase →</a>
+          Les données sont stockées temporairement dans le navigateur. <a href="file:///C:/Users/Ga%C3%ABlle%20RIBES/Downloads/sanit_climat_tarifs_v2_4.html#" onclick="switchView(&#39;config&#39;); return false;" style="color: var(--orange);">Configurer Firebase →</a>
         </div>
       </div>
 
@@ -1374,12 +1374,23 @@ function showNotif(msg, type) {
 /* ─────────────────────────────────────────────
    INIT
 ───────────────────────────────────────────── */
+
+// Config Firebase pré-remplie — Projet : TARIF SANIT CLIMAT
+const FIREBASE_CONFIG_DEFAULT = {
+  apiKey: "AIzaSyCVGLS1JhtDQmPWgQj3ay2cFFrReKjaI_4",
+  authDomain: "tarif-sanit-climat.firebaseapp.com",
+  databaseURL: "https://tarif-sanit-climat-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "tarif-sanit-climat",
+  storageBucket: "tarif-sanit-climat.firebasestorage.app",
+  messagingSenderId: "243997640581",
+  appId: "1:243997640581:web:027b68a0d9a87ef67166ec"
+};
+
 document.addEventListener('DOMContentLoaded', () => {
-  const cfg = loadConfig();
-  if (cfg && cfg.apiKey) {
-    const ok = initFirebase(cfg);
-    if (!ok) showNotif('Erreur Firebase — vérifiez la config', 'error');
-  }
+  const cfg = loadConfig() || FIREBASE_CONFIG_DEFAULT;
+  if (!loadConfig()) localStorage.setItem('sc_tarifs_firebase_config', JSON.stringify(FIREBASE_CONFIG_DEFAULT));
+  const ok = initFirebase(cfg);
+  if (!ok) showNotif('Erreur connexion Firebase', 'error');
   loadTarifs();
   document.getElementById('modal-tarif').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('modal-tarif'); });
   document.getElementById('modal-import').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('modal-import'); });
