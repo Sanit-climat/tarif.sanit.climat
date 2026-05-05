@@ -708,6 +708,11 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
   .config-area { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 20px; }
   .config-area h3 { font-size: 14px; font-weight: 700; color: var(--gray-800); margin-bottom: 14px; }
   .config-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* Sous-liste bailleurs */
+  .bailleur-sub-item { font-weight: 400 !important; color: var(--gray-600) !important; }
+  .bailleur-sub-item.active { background: var(--orange-light) !important; color: var(--orange) !important; font-weight: 600 !important; }
+  .bailleur-sub-item:hover { background: var(--gray-100); }
 </style>
 </head>
 <body>
@@ -723,6 +728,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
   </div>
   <div class="topbar-actions">
     <button class="btn-topbar" onclick="showImportModal()">⬆ Importer Excel</button>
+    <button class="btn-topbar" onclick="importVilogiaPreloaded()" title="Importe les 55 tarifs Vilogia extraits des devis">⬆ Tarifs Vilogia</button>
     <button class="btn-topbar" onclick="exportExcel()">⬇ Excel</button>
     <button class="btn-topbar" onclick="exportPDF()">⬇ PDF</button>
     <button class="btn-topbar orange" onclick="openAddModal()">+ Nouveau tarif</button>
@@ -761,6 +767,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
         <div class="client-dot" style="background:#B85010"></div> Bailleurs sociaux
         <span class="nav-count" id="cnt-bailleur">0</span>
       </button>
+      <div id="bailleur-sublist" style="margin-left: 20px; display: none;">
+        <!-- Sous-liste injectée dynamiquement -->
+      </div>
       <button class="nav-item" id="nav-entreprise" onclick="filterClient(&#39;Entreprise&#39;)">
         <div class="client-dot" style="background:#6B3D9E"></div> Entreprises
         <span class="nav-count" id="cnt-entreprise">0</span>
@@ -880,6 +889,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
         </div>
         <div class="toolbar-divider"></div>
         <select class="filter-select" id="filter-categorie" onchange="renderTable()"><option value="">Toutes catégories</option></select>
+        <select class="filter-select" id="filter-bailleur" onchange="renderTable()"><option value="">Tous bailleurs</option></select>
         <select class="filter-select" id="filter-tva" onchange="renderTable()">
           <option value="">TVA (toutes)</option>
           <option value="10">TVA 10%</option>
@@ -903,11 +913,14 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
                 <th class="sortable" onclick="sortBy(&#39;designation&#39;)">Désignation ▴</th>
                 <th class="sortable" onclick="sortBy(&#39;categorie&#39;)">Catégorie</th>
                 <th class="sortable" onclick="sortBy(&#39;typeClient&#39;)">Type client</th>
+                <th class="sortable" onclick="sortBy(&#39;bailleur&#39;)">Bailleur</th>
                 <th>Ref.</th>
                 <th class="sortable" onclick="sortBy(&#39;prixHT&#39;)">Prix HT</th>
                 <th>TVA</th>
                 <th class="sortable" onclick="sortBy(&#39;prixTTC&#39;)">Prix TTC</th>
                 <th>Unité</th>
+                <th title="Prix unitaire calculé">€/U</th>
+                <th>Devis</th>
                 <th style="width:80px;"></th>
               </tr>
             </thead>
@@ -971,13 +984,29 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
         </div>
         <div class="form-group">
           <label>Type de client *</label>
-          <select id="f-typeClient">
+          <select id="f-typeClient" onchange="onTypeClientChange()">
             <option value="">-- Choisir --</option>
             <option value="Particulier">Particulier</option>
             <option value="Syndic">Syndic / Copropriété</option>
             <option value="Bailleur social">Bailleur social</option>
             <option value="Entreprise">Entreprise / Tertiaire</option>
           </select>
+        </div>
+      </div>
+      <div class="form-row" id="row-bailleur" style="display:none;">
+        <div class="form-group" style="grid-column: 1 / -1;">
+          <label>Bailleur spécifique <span style="color:var(--gray-400); font-weight:400;">(recommandé pour les bailleurs sociaux)</span></label>
+          <input type="text" id="f-bailleur" placeholder="Vilogia, Erilia, 3F SUD…" list="bailleur-list">
+          <datalist id="bailleur-list">
+            <option value="Vilogia">
+            <option value="Erilia">
+            <option value="3F SUD">
+            <option value="Logis Méditerranée">
+            <option value="13 Habitat">
+            <option value="SFHE">
+            <option value="THM">
+            <option value="FONCIA">
+          </datalist>
         </div>
       </div>
       <div class="form-row">
@@ -1019,6 +1048,22 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
         <div class="form-group">
           <label>Remise éventuelle (%)</label>
           <input type="number" id="f-remise" min="0" max="100" placeholder="0" oninput="calcTTC()">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Prix unitaire calculé (€) <span style="color:var(--gray-400); font-weight:400;">(€/ml, €/m², €/unité…)</span></label>
+          <input type="number" id="f-prixUnitaire" step="0.01" min="0" placeholder="auto = prix HT">
+        </div>
+        <div class="form-group">
+          <label>Métrage de référence</label>
+          <input type="text" id="f-metrageRef" placeholder="ex: 12 m², 16 ml, 3 spots…">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="grid-column: 1 / -1;">
+          <label>N° devis source <span style="color:var(--gray-400); font-weight:400;">(traçabilité)</span></label>
+          <input type="text" id="f-devisSource" placeholder="ex: DEV26-11571">
         </div>
       </div>
       <div class="form-row full">
@@ -1129,6 +1174,7 @@ function clearConfig() {
 ───────────────────────────────────────────── */
 let tarifs = [];
 let currentFilter = 'tous';
+let currentBailleur = '';
 let currentView = 'liste';
 let sortField = 'designation';
 let sortAsc = true;
@@ -1183,6 +1229,25 @@ function saveTarif() {
     showNotif('Remplissez les champs obligatoires (*)', 'error'); return;
   }
 
+  const bailleur = (document.getElementById('f-bailleur')?.value || '').trim();
+  const devisSource = (document.getElementById('f-devisSource')?.value || '').trim();
+  const metrageRef = (document.getElementById('f-metrageRef')?.value || '').trim();
+  const prixUnitaireRaw = parseFloat(document.getElementById('f-prixUnitaire')?.value);
+  const prixUnitaire = isNaN(prixUnitaireRaw) ? prixHT : prixUnitaireRaw;
+
+  // DETECTION DOUBLON (alerte mais n'empêche pas)
+  if (!editingId) {
+    const dup = tarifs.find(t =>
+      (t.designation || '').toLowerCase() === designation.toLowerCase() &&
+      (t.bailleur || '') === bailleur &&
+      (t.typeClient || '') === typeClient
+    );
+    if (dup) {
+      const msg = `⚠ DOUBLON DÉTECTÉ\n\nUne prestation existe déjà :\n"${dup.designation}"\nBailleur : ${dup.bailleur || '(aucun)'}\nPrix HT actuel : ${dup.prixHT} €\nNouveau prix HT : ${prixHT} €\n\nVoulez-vous quand même l'ajouter ?\n(Annuler = ne pas ajouter, OK = créer un doublon)`;
+      if (!confirm(msg)) return;
+    }
+  }
+
   const tva = parseInt(document.getElementById('f-tva').value);
   const remise = parseFloat(document.getElementById('f-remise').value) || 0;
   const prixHTremise = prixHT * (1 - remise / 100);
@@ -1192,9 +1257,13 @@ function saveTarif() {
     designation,
     categorie,
     typeClient,
+    bailleur,
     reference: document.getElementById('f-reference').value.trim(),
     unite: document.getElementById('f-unite').value,
     prixHT: Math.round(prixHT * 100) / 100,
+    prixUnitaire: Math.round(prixUnitaire * 100) / 100,
+    metrageRef,
+    devisSource,
     tva,
     remise,
     prixTTC: Math.round(prixTTC * 100) / 100,
@@ -1247,6 +1316,10 @@ function editTarif(id) {
   document.getElementById('f-designation').value = t.designation || '';
   document.getElementById('f-categorie').value = t.categorie || '';
   document.getElementById('f-typeClient').value = t.typeClient || '';
+  if (document.getElementById('f-bailleur')) document.getElementById('f-bailleur').value = t.bailleur || '';
+  if (document.getElementById('f-devisSource')) document.getElementById('f-devisSource').value = t.devisSource || '';
+  if (document.getElementById('f-prixUnitaire')) document.getElementById('f-prixUnitaire').value = t.prixUnitaire || '';
+  if (document.getElementById('f-metrageRef')) document.getElementById('f-metrageRef').value = t.metrageRef || '';
   document.getElementById('f-reference').value = t.reference || '';
   document.getElementById('f-unite').value = t.unite || 'forfait';
   document.getElementById('f-prixHT').value = t.prixHT || '';
@@ -1254,6 +1327,7 @@ function editTarif(id) {
   document.getElementById('f-remise').value = t.remise || '';
   document.getElementById('f-notes').value = t.notes || '';
   document.getElementById('chk-pnou').checked = !!t.isPNOU;
+  onTypeClientChange();
   calcTTC();
   document.getElementById('modal-tarif').classList.add('open');
 }
@@ -1266,13 +1340,21 @@ function getFilteredTarifs() {
   const q = document.getElementById('search-input').value.toLowerCase();
   const cat = document.getElementById('filter-categorie').value;
   const tva = document.getElementById('filter-tva').value;
+  const bailleurFilter = document.getElementById('filter-bailleur')?.value || '';
 
   if (currentFilter === 'PNOU') data = data.filter(t => t.isPNOU);
   else if (currentFilter !== 'tous') data = data.filter(t => t.typeClient === currentFilter);
+
+  // Filtre bailleur (sidebar OU dropdown)
+  const effectiveBailleur = currentBailleur || bailleurFilter;
+  if (effectiveBailleur) data = data.filter(t => (t.bailleur || '') === effectiveBailleur);
+
   if (q) data = data.filter(t =>
     (t.designation||'').toLowerCase().includes(q) ||
     (t.categorie||'').toLowerCase().includes(q) ||
     (t.reference||'').toLowerCase().includes(q) ||
+    (t.bailleur||'').toLowerCase().includes(q) ||
+    (t.devisSource||'').toLowerCase().includes(q) ||
     (t.notes||'').toLowerCase().includes(q)
   );
   if (cat) data = data.filter(t => t.categorie === cat);
@@ -1307,15 +1389,19 @@ function renderTable() {
       </td>
       <td>
         <div style="font-weight:600; font-size:13px;">${esc(t.designation)}</div>
+        ${t.metrageRef ? `<div style="font-size:10px; color:var(--blue-mid); margin-top:2px;">📐 ${esc(t.metrageRef)}</div>` : ''}
         ${t.notes ? `<div style="font-size:11px; color:var(--gray-500); margin-top:2px;">${esc(t.notes.substring(0,60))}${t.notes.length>60?'…':''}</div>` : ''}
       </td>
       <td><span style="font-size:12px; background:var(--gray-100); padding:3px 8px; border-radius:4px; color:var(--gray-700);">${esc(t.categorie)}</span></td>
       <td>${clientBadge(t.typeClient, t.isPNOU)}</td>
+      <td>${t.bailleur ? `<span style="font-size:11px; background:#FFF1E5; color:#B85010; padding:3px 8px; border-radius:4px; font-weight:600;">${esc(t.bailleur)}</span>` : '<span style="color:var(--gray-300); font-size:11px;">—</span>'}</td>
       <td style="font-size:12px; color:var(--gray-500);">${esc(t.reference)}</td>
       <td class="prix ht">${formatPrix(t.prixHT)} €</td>
       <td style="font-size:12px; color:var(--gray-600);">${t.tva}%</td>
       <td class="prix">${formatPrix(t.prixTTC)} €</td>
       <td style="font-size:12px; color:var(--gray-500);">${esc(t.unite)}</td>
+      <td style="font-size:11px; color:var(--gray-700); text-align:right;">${(t.prixUnitaire && t.prixUnitaire !== t.prixHT) ? formatPrix(t.prixUnitaire) + '€' : '<span style="color:var(--gray-300)">—</span>'}</td>
+      <td style="font-size:10px; color:var(--gray-500); font-family: monospace;">${esc(t.devisSource || '')}</td>
       <td>
         <div class="action-btns">
           <button class="icon-btn" onclick="editTarif('${t._id}')" title="Modifier">✏</button>
@@ -1446,17 +1532,72 @@ function updateCatFilters() {
   });
   // Datalist
   document.getElementById('cat-list').innerHTML = cats.map(c => `<option value="${esc(c)}">`).join('');
+  // Filter bailleur dropdown
+  const bailleurs = [...new Set(tarifs.map(t => t.bailleur).filter(Boolean))].sort();
+  const selB = document.getElementById('filter-bailleur');
+  if (selB) {
+    const valB = selB.value;
+    selB.innerHTML = '<option value="">Tous bailleurs</option>' + bailleurs.map(b => `<option value="${esc(b)}">${esc(b)}</option>`).join('');
+    selB.value = valB;
+  }
+  // Sub-list (rafraîchir)
+  updateBailleurSublist();
 }
 
 function filterClient(type) {
   currentFilter = type;
+  // Si on quitte "Bailleur social", on reset le filtre bailleur
+  if (type !== 'Bailleur social') currentBailleur = '';
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
   const id = type === 'tous' ? 'nav-tous' : type === 'PNOU' ? 'nav-pnou' :
     type === 'Particulier' ? 'nav-particulier' :
     type === 'Syndic' ? 'nav-syndic' :
     type === 'Bailleur social' ? 'nav-bailleur' : 'nav-entreprise';
   document.getElementById(id)?.classList.add('active');
+  // Sub-list bailleurs
+  updateBailleurSublist();
+  // Reset sélection sub-bailleur visuelle
+  document.querySelectorAll('.bailleur-sub-item').forEach(el => el.classList.remove('active'));
   renderTable();
+}
+
+function filterBailleur(name) {
+  currentFilter = 'Bailleur social';
+  currentBailleur = name || '';
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('nav-bailleur')?.classList.add('active');
+  document.querySelectorAll('.bailleur-sub-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.bailleur === name);
+  });
+  renderTable();
+}
+
+function updateBailleurSublist() {
+  const list = document.getElementById('bailleur-sublist');
+  if (!list) return;
+  const show = currentFilter === 'Bailleur social';
+  list.style.display = show ? 'block' : 'none';
+  if (!show) return;
+  // Compter les bailleurs distincts parmi les tarifs Bailleur social
+  const counts = {};
+  tarifs.filter(t => t.typeClient === 'Bailleur social').forEach(t => {
+    const b = (t.bailleur || '(non précisé)').trim() || '(non précisé)';
+    counts[b] = (counts[b] || 0) + 1;
+  });
+  const entries = Object.entries(counts).sort((a,b) => a[0].localeCompare(b[0],'fr'));
+  list.innerHTML = entries.map(([name, n]) => {
+    const isAll = name === '(non précisé)';
+    const label = isAll ? '(non précisé)' : name;
+    const value = isAll ? '' : name;
+    return `<button class="nav-item bailleur-sub-item${currentBailleur === value ? ' active' : ''}" data-bailleur="${esc(value)}" onclick="filterBailleur('${esc(value).replace(/'/g, "\\'")}')" style="padding-left:14px; font-size:12px;">
+      <span style="font-size:10px; color:var(--gray-400);">└</span> ${esc(label)}
+      <span class="nav-count">${n}</span>
+    </button>`;
+  }).join('') + `
+    <button class="nav-item bailleur-sub-item${currentBailleur === '' ? ' active' : ''}" onclick="filterBailleur('')" style="padding-left:14px; font-size:12px; color:var(--gray-500);">
+      <span style="font-size:10px; color:var(--gray-400);">└</span> Tous bailleurs
+    </button>
+  `;
 }
 
 function resetFilters() {
@@ -1475,6 +1616,7 @@ function sortBy(field) {
 function getFilterLabel() {
   if (currentFilter === 'tous') return 'Tous les tarifs';
   if (currentFilter === 'PNOU') return 'Tarifs PNOU';
+  if (currentFilter === 'Bailleur social' && currentBailleur) return `Bailleur : ${currentBailleur}`;
   return currentFilter;
 }
 
@@ -1516,7 +1658,7 @@ function loadConfigForm() {
 function openAddModal() {
   editingId = null;
   document.getElementById('modal-title').textContent = 'Nouveau tarif';
-  ['f-designation','f-categorie','f-reference','f-prixHT','f-prixTTC','f-notes','f-remise'].forEach(id => {
+  ['f-designation','f-categorie','f-reference','f-prixHT','f-prixTTC','f-notes','f-remise','f-bailleur','f-devisSource','f-prixUnitaire','f-metrageRef'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -1524,7 +1666,19 @@ function openAddModal() {
   document.getElementById('f-tva').value = '10';
   document.getElementById('f-unite').value = 'forfait';
   document.getElementById('chk-pnou').checked = false;
+  // Si on est sur un filtre bailleur, pré-remplir
+  if (currentBailleur) {
+    document.getElementById('f-typeClient').value = 'Bailleur social';
+    document.getElementById('f-bailleur').value = currentBailleur;
+  }
+  onTypeClientChange();
   document.getElementById('modal-tarif').classList.add('open');
+}
+
+function onTypeClientChange() {
+  const tc = document.getElementById('f-typeClient').value;
+  const row = document.getElementById('row-bailleur');
+  if (row) row.style.display = (tc === 'Bailleur social') ? '' : 'none';
 }
 
 function closeModal(id) {
@@ -1799,6 +1953,728 @@ const FIREBASE_CONFIG_DEFAULT = {
   messagingSenderId: "243997640581",
   appId: "1:243997640581:web:027b68a0d9a87ef67166ec"
 };
+
+/* ─────────────────────────────────────────────
+   IMPORT TARIFS VILOGIA PRÉ-CHARGÉS
+───────────────────────────────────────────── */
+const VILOGIA_TARIFS = [
+  {
+    "designation": "Forfait déplacement",
+    "categorie": "Déplacement",
+    "prixHT": 35.0,
+    "unite": "forfait",
+    "prixUnitaire": 35.0,
+    "uniteRef": "déplacement",
+    "metrageRef": null,
+    "note": "Forfait standard sur la quasi-totalité des devis Vilogia",
+    "devisSource": "DEV26-11068 + 17 autres"
+  },
+  {
+    "designation": "Dépose et évacuation baignoire",
+    "categorie": "Plomberie sanitaire",
+    "prixHT": 200.0,
+    "unite": "forfait",
+    "prixUnitaire": 200.0,
+    "uniteRef": "baignoire",
+    "metrageRef": null,
+    "note": "Prix retenu : le plus cher entre 180€ et 200€",
+    "devisSource": "DEV26-11571"
+  },
+  {
+    "designation": "Modification tuyauterie pour déplacement robinet sur baignoire",
+    "categorie": "Plomberie sanitaire",
+    "prixHT": 380.0,
+    "unite": "forfait",
+    "prixUnitaire": 380.0,
+    "uniteRef": "intervention",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11571"
+  },
+  {
+    "designation": "Fourniture et pose baignoire acier 170 cm",
+    "categorie": "Plomberie sanitaire",
+    "prixHT": 580.0,
+    "unite": "unité",
+    "prixUnitaire": 580.0,
+    "uniteRef": "baignoire",
+    "metrageRef": "170 cm",
+    "note": "Modèle 170 cm spécifié",
+    "devisSource": "DEV26-11571"
+  },
+  {
+    "designation": "Fourniture et pose baignoire acier",
+    "categorie": "Plomberie sanitaire",
+    "prixHT": 660.0,
+    "unite": "unité",
+    "prixUnitaire": 660.0,
+    "uniteRef": "baignoire",
+    "metrageRef": null,
+    "note": "Taille non précisée - prix le plus cher retenu",
+    "devisSource": "DEV26-11151"
+  },
+  {
+    "designation": "Fourniture et pose robinetterie bain/douche",
+    "categorie": "Plomberie sanitaire",
+    "prixHT": 264.0,
+    "unite": "unité",
+    "prixUnitaire": 264.0,
+    "uniteRef": "robinet",
+    "metrageRef": null,
+    "note": "Prix retenu : le plus cher entre 260€ et 264€",
+    "devisSource": "DEV26-11151"
+  },
+  {
+    "designation": "Fourniture et pose tablier PVC",
+    "categorie": "Plomberie sanitaire",
+    "prixHT": 260.0,
+    "unite": "unité",
+    "prixUnitaire": 260.0,
+    "uniteRef": "tablier",
+    "metrageRef": null,
+    "note": "Prix retenu : le plus cher entre 228€ et 260€",
+    "devisSource": "DEV26-11571"
+  },
+  {
+    "designation": "Forfait dépose et évacuation tablier carreler",
+    "categorie": "Plomberie sanitaire",
+    "prixHT": 216.0,
+    "unite": "forfait",
+    "prixUnitaire": 216.0,
+    "uniteRef": "tablier",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11151"
+  },
+  {
+    "designation": "Fourniture et pose margelle siporex à carreler 8cm",
+    "categorie": "Plomberie sanitaire",
+    "prixHT": 540.0,
+    "unite": "unité",
+    "prixUnitaire": 540.0,
+    "uniteRef": "margelle",
+    "metrageRef": "épaisseur 8cm",
+    "note": "",
+    "devisSource": "DEV26-11571"
+  },
+  {
+    "designation": "Forfait dépose et repose mobilier lavabo",
+    "categorie": "Plomberie sanitaire",
+    "prixHT": 300.0,
+    "unite": "forfait",
+    "prixUnitaire": 300.0,
+    "uniteRef": "mobilier",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11571"
+  },
+  {
+    "designation": "Fourniture et remplacement meuble sous-vasque 100x60cm",
+    "categorie": "Plomberie sanitaire",
+    "prixHT": 540.0,
+    "unite": "unité",
+    "prixUnitaire": 540.0,
+    "uniteRef": "meuble",
+    "metrageRef": "L100 x H60 cm",
+    "note": "",
+    "devisSource": "DEV26-11718"
+  },
+  {
+    "designation": "Fourniture et pose joint silicone pourtour bac à douche",
+    "categorie": "Plomberie sanitaire",
+    "prixHT": 160.0,
+    "unite": "forfait",
+    "prixUnitaire": 160.0,
+    "uniteRef": "bac",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11853"
+  },
+  {
+    "designation": "Fourniture et pose barre de maintien extrémité paroi",
+    "categorie": "Plomberie sanitaire",
+    "prixHT": 216.0,
+    "unite": "unité",
+    "prixUnitaire": 216.0,
+    "uniteRef": "barre",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11694"
+  },
+  {
+    "designation": "Forfait fourniture et remplacement mécanisme de chasse WC",
+    "categorie": "Plomberie sanitaire",
+    "prixHT": 130.0,
+    "unite": "forfait",
+    "prixUnitaire": 130.0,
+    "uniteRef": "mécanisme",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11335"
+  },
+  {
+    "designation": "Fourniture et remplacement vanne 2 voies + tête thermostatique",
+    "categorie": "Plomberie chauffage",
+    "prixHT": 850.0,
+    "unite": "unité",
+    "prixUnitaire": 850.0,
+    "uniteRef": "vanne",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11645"
+  },
+  {
+    "designation": "Fourniture et remplacement raccord fuyard encastré",
+    "categorie": "Plomberie",
+    "prixHT": 300.0,
+    "unite": "unité",
+    "prixUnitaire": 300.0,
+    "uniteRef": "raccord",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11338"
+  },
+  {
+    "designation": "Fourniture et remplacement verrou RAIN BIRD",
+    "categorie": "Plomberie",
+    "prixHT": 432.0,
+    "unite": "unité",
+    "prixUnitaire": 432.0,
+    "uniteRef": "verrou",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11338"
+  },
+  {
+    "designation": "Forfait dépose des dalles terrasse",
+    "categorie": "Étanchéité",
+    "prixHT": 180.0,
+    "unite": "m²",
+    "prixUnitaire": 15.0,
+    "uniteRef": "m²",
+    "metrageRef": "12 m²",
+    "note": "Prix forfait pour 12m² ; unitaire 15€HT/m²",
+    "devisSource": "DEV26-11554"
+  },
+  {
+    "designation": "Forfait création chape avec reprise de pente",
+    "categorie": "Étanchéité",
+    "prixHT": 1320.0,
+    "unite": "m²",
+    "prixUnitaire": 110.0,
+    "uniteRef": "m²",
+    "metrageRef": "12 m²",
+    "note": "Prix forfait pour 12m² ; unitaire 110€HT/m²",
+    "devisSource": "DEV26-11554"
+  },
+  {
+    "designation": "Forfait fourniture et pose étanchéité",
+    "categorie": "Étanchéité",
+    "prixHT": 1200.0,
+    "unite": "m²",
+    "prixUnitaire": 100.0,
+    "uniteRef": "m²",
+    "metrageRef": "12 m²",
+    "note": "Prix forfait pour 12m² ; unitaire 100€HT/m²",
+    "devisSource": "DEV26-11554"
+  },
+  {
+    "designation": "Forfait repose des dalles terrasse",
+    "categorie": "Étanchéité",
+    "prixHT": 300.0,
+    "unite": "m²",
+    "prixUnitaire": 25.0,
+    "uniteRef": "m²",
+    "metrageRef": "12 m²",
+    "note": "Prix forfait pour 12m² ; unitaire 25€HT/m²",
+    "devisSource": "DEV26-11554"
+  },
+  {
+    "designation": "Forfait fourniture et remplacement plots",
+    "categorie": "Étanchéité",
+    "prixHT": 180.0,
+    "unite": "m²",
+    "prixUnitaire": 15.0,
+    "uniteRef": "m²",
+    "metrageRef": "12 m²",
+    "note": "Prix forfait pour 12m² ; unitaire 15€HT/m²",
+    "devisSource": "DEV26-11554"
+  },
+  {
+    "designation": "Forfait manutention mobilier",
+    "categorie": "Étanchéité",
+    "prixHT": 216.0,
+    "unite": "forfait",
+    "prixUnitaire": 216.0,
+    "uniteRef": "intervention",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11940"
+  },
+  {
+    "designation": "Forfait dépose et stockage dalles existantes",
+    "categorie": "Étanchéité",
+    "prixHT": 360.0,
+    "unite": "forfait",
+    "prixUnitaire": 360.0,
+    "uniteRef": "intervention",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11940"
+  },
+  {
+    "designation": "Forfait aspiration eau stagnante & nettoyage support",
+    "categorie": "Étanchéité",
+    "prixHT": 396.0,
+    "unite": "forfait",
+    "prixUnitaire": 396.0,
+    "uniteRef": "intervention",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11940"
+  },
+  {
+    "designation": "Fourniture et pose solin étanchéité",
+    "categorie": "Étanchéité",
+    "prixHT": 1152.0,
+    "unite": "ml",
+    "prixUnitaire": 72.0,
+    "uniteRef": "ml",
+    "metrageRef": "16 ML",
+    "note": "Prix forfait pour 16ML ; unitaire 72€HT/ml",
+    "devisSource": "DEV26-11940"
+  },
+  {
+    "designation": "Fourniture et pose plot extra-plat & réglage",
+    "categorie": "Étanchéité",
+    "prixHT": 696.0,
+    "unite": "forfait",
+    "prixUnitaire": 696.0,
+    "uniteRef": "intervention",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11940"
+  },
+  {
+    "designation": "Forfait repose dalles existantes avec découpe latérale",
+    "categorie": "Étanchéité",
+    "prixHT": 504.0,
+    "unite": "forfait",
+    "prixUnitaire": 504.0,
+    "uniteRef": "intervention",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11940"
+  },
+  {
+    "designation": "Forfait travaux type cordiste - fissure depuis boîte à eau façade",
+    "categorie": "Étanchéité",
+    "prixHT": 540.0,
+    "unite": "forfait",
+    "prixUnitaire": 540.0,
+    "uniteRef": "intervention",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11940"
+  },
+  {
+    "designation": "Fourniture et application résine chimique ton pierre sur fissure",
+    "categorie": "Étanchéité",
+    "prixHT": 456.0,
+    "unite": "forfait",
+    "prixUnitaire": 456.0,
+    "uniteRef": "intervention",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11940"
+  },
+  {
+    "designation": "Fourniture et application silicone extérieur translucide",
+    "categorie": "Étanchéité",
+    "prixHT": 324.0,
+    "unite": "forfait",
+    "prixUnitaire": 324.0,
+    "uniteRef": "intervention",
+    "metrageRef": null,
+    "note": "Jonction couvertine & platine garde-corps",
+    "devisSource": "DEV26-11940"
+  },
+  {
+    "designation": "Fourniture et reprise étanchéité descente EP",
+    "categorie": "Étanchéité",
+    "prixHT": 260.0,
+    "unite": "unité",
+    "prixUnitaire": 260.0,
+    "uniteRef": "descente",
+    "metrageRef": null,
+    "note": "Prix unitaire par descente",
+    "devisSource": "DEV26-11753"
+  },
+  {
+    "designation": "Forfait débouchage EP avec retrait mousse PU",
+    "categorie": "Étanchéité",
+    "prixHT": 540.0,
+    "unite": "forfait",
+    "prixUnitaire": 540.0,
+    "uniteRef": "intervention",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11068"
+  },
+  {
+    "designation": "Forfait recherche de fuite en toiture",
+    "categorie": "Recherche de fuite",
+    "prixHT": 450.0,
+    "unite": "forfait",
+    "prixUnitaire": 450.0,
+    "uniteRef": "intervention",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11853"
+  },
+  {
+    "designation": "Forfait diagnostic de panne",
+    "categorie": "Diagnostic",
+    "prixHT": 180.0,
+    "unite": "forfait",
+    "prixUnitaire": 180.0,
+    "uniteRef": "intervention",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11581"
+  },
+  {
+    "designation": "Fourniture et remplacement cylindre 40/50 Y7",
+    "categorie": "Serrurerie",
+    "prixHT": 170.0,
+    "unite": "unité",
+    "prixUnitaire": 170.0,
+    "uniteRef": "cylindre",
+    "metrageRef": "40/50 Y7",
+    "note": "",
+    "devisSource": "DEV26-11713"
+  },
+  {
+    "designation": "Fourniture et pose cylindre 30/30",
+    "categorie": "Serrurerie",
+    "prixHT": 150.0,
+    "unite": "unité",
+    "prixUnitaire": 150.0,
+    "uniteRef": "cylindre",
+    "metrageRef": "30/30",
+    "note": "",
+    "devisSource": "DEV26-11713"
+  },
+  {
+    "designation": "Forfait ouverture porte dans local",
+    "categorie": "Serrurerie",
+    "prixHT": 180.0,
+    "unite": "forfait",
+    "prixUnitaire": 180.0,
+    "uniteRef": "intervention",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11713"
+  },
+  {
+    "designation": "Fourniture et remplacement coffre à larder A40",
+    "categorie": "Serrurerie",
+    "prixHT": 130.0,
+    "unite": "unité",
+    "prixUnitaire": 130.0,
+    "uniteRef": "coffre",
+    "metrageRef": "A40",
+    "note": "",
+    "devisSource": "DEV26-11713"
+  },
+  {
+    "designation": "Fourniture et remplacement poignée HIONNA",
+    "categorie": "Serrurerie",
+    "prixHT": 135.0,
+    "unite": "unité",
+    "prixUnitaire": 135.0,
+    "uniteRef": "poignée",
+    "metrageRef": "modèle HIONNA",
+    "note": "",
+    "devisSource": "DEV26-11713"
+  },
+  {
+    "designation": "Fourniture et remplacement porte palière âme pleine H2040 x L930mm",
+    "categorie": "Menuiserie",
+    "prixHT": 1500.0,
+    "unite": "unité",
+    "prixUnitaire": 1500.0,
+    "uniteRef": "porte",
+    "metrageRef": "H2040 x L930",
+    "note": "Cadre bois dur, stratifié 2 faces identiques, poignées et paumelles incluses",
+    "devisSource": "DEV26-11689"
+  },
+  {
+    "designation": "Fourniture et reprise enduit + peinture salle de bain",
+    "categorie": "Peinture",
+    "prixHT": 660.0,
+    "unite": "forfait",
+    "prixUnitaire": 660.0,
+    "uniteRef": "salle de bain",
+    "metrageRef": null,
+    "note": "Prix retenu : le plus cher entre 636€ et 660€",
+    "devisSource": "DEV26-11704"
+  },
+  {
+    "designation": "Forfait rebouchage partiel du mur",
+    "categorie": "Peinture",
+    "prixHT": 192.0,
+    "unite": "forfait",
+    "prixUnitaire": 192.0,
+    "uniteRef": "intervention",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11338"
+  },
+  {
+    "designation": "Forfait fourniture et reprise enduit façade partiel",
+    "categorie": "Peinture",
+    "prixHT": 192.0,
+    "unite": "forfait",
+    "prixUnitaire": 192.0,
+    "uniteRef": "intervention",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11338"
+  },
+  {
+    "designation": "Fourniture et pose faïence 20x20 blanc",
+    "categorie": "Peinture",
+    "prixHT": 1400.0,
+    "unite": "forfait",
+    "prixUnitaire": 1400.0,
+    "uniteRef": "intervention",
+    "metrageRef": null,
+    "note": "Coin baignoire - métrage non précisé",
+    "devisSource": "DEV26-11571"
+  },
+  {
+    "designation": "Forfait démolition pour accès tuyauterie",
+    "categorie": "Peinture",
+    "prixHT": 216.0,
+    "unite": "forfait",
+    "prixUnitaire": 216.0,
+    "uniteRef": "intervention",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11338"
+  },
+  {
+    "designation": "Fourniture et pose trappe 30x30",
+    "categorie": "Peinture",
+    "prixHT": 300.0,
+    "unite": "unité",
+    "prixUnitaire": 300.0,
+    "uniteRef": "trappe",
+    "metrageRef": "30x30",
+    "note": "",
+    "devisSource": "DEV26-11694"
+  },
+  {
+    "designation": "Forfait condamnation prise électrique",
+    "categorie": "Électricité",
+    "prixHT": 156.0,
+    "unite": "forfait",
+    "prixUnitaire": 78.0,
+    "uniteRef": "prise",
+    "metrageRef": "2 prises",
+    "note": "Prix forfait pour 2 prises ; unitaire 78€HT/prise",
+    "devisSource": "DEV26-11694"
+  },
+  {
+    "designation": "Forfait création bloc 3 prises avec goulotte",
+    "categorie": "Électricité",
+    "prixHT": 384.0,
+    "unite": "forfait",
+    "prixUnitaire": 54.86,
+    "uniteRef": "ml goulotte",
+    "metrageRef": "7 ML goulotte",
+    "note": "Prix forfait pour bloc 3 prises + 7ML goulotte ; unitaire ~55€HT/ml goulotte",
+    "devisSource": "DEV26-11694"
+  },
+  {
+    "designation": "Forfait découpe placo + pose 3 spots IP65",
+    "categorie": "Électricité",
+    "prixHT": 468.0,
+    "unite": "forfait",
+    "prixUnitaire": 156.0,
+    "uniteRef": "spot",
+    "metrageRef": "3 spots + ouverture 30x30",
+    "note": "Prix forfait pour 3 spots ; unitaire 156€HT/spot",
+    "devisSource": "DEV26-11694"
+  },
+  {
+    "designation": "[CHANTIER] Remplacement bac à douche complet",
+    "categorie": "Chantier",
+    "prixHT": 2400.0,
+    "unite": "chantier",
+    "prixUnitaire": 2400.0,
+    "uniteRef": "chantier",
+    "metrageRef": null,
+    "note": "Forfait global incluant : dépose/repose paroi douche, dépose 1ère rangée faïence, dépose bac, fourniture+pose bac extra-plat 120x90, pose 1ère rangée faïence",
+    "devisSource": "DEV26-11698"
+  },
+  {
+    "designation": "[CHANTIER] Remplacement tronçon VRD profondeur 1,5m",
+    "categorie": "Chantier",
+    "prixHT": 35840.0,
+    "unite": "chantier",
+    "prixUnitaire": 2108.24,
+    "uniteRef": "ml tranchée",
+    "metrageRef": "17 ml de tranchée",
+    "note": "Chantier complet bât E1+E2 incluant : barrières HERAS, pompe (21j), camion pompage, blindage 6u, tranchée+évac 17ml, tuyauterie 17ml, rebouchage 17ml. Unitaire ~2108€HT/ml tranchée tout compris",
+    "devisSource": "DEV26-11482"
+  },
+  {
+    "designation": "[CHANTIER] Étanchéité calendrite avec remontée verticale",
+    "categorie": "Chantier",
+    "prixHT": 1440.0,
+    "unite": "chantier",
+    "prixUnitaire": 1440.0,
+    "uniteRef": "intervention",
+    "metrageRef": null,
+    "note": "Spécifique terrasse - métrage non communiqué dans devis",
+    "devisSource": "DEV26-11940"
+  },
+  {
+    "designation": "[CHANTIER] Étanchéité calendrite descente EP vers boîte à eau",
+    "categorie": "Chantier",
+    "prixHT": 360.0,
+    "unite": "chantier",
+    "prixUnitaire": 360.0,
+    "uniteRef": "intervention",
+    "metrageRef": null,
+    "note": "",
+    "devisSource": "DEV26-11940"
+  },
+  {
+    "designation": "[CHANTIER] Étanchéité souche VMC + relevés alu",
+    "categorie": "Chantier",
+    "prixHT": 945.0,
+    "unite": "chantier",
+    "prixUnitaire": 135.0,
+    "uniteRef": "ml relevé",
+    "metrageRef": "souche VMC + 7ML relevés alu",
+    "note": "Forfait souche + 7ml relevés ; unitaire ~135€HT/ml relevé",
+    "devisSource": "DEV26-11753"
+  }
+];
+
+
+async function importVilogiaPreloaded() {
+  if (!confirm(`Importer les ${VILOGIA_TARIFS.length} tarifs Vilogia extraits des devis ?\n\n• Bailleur : Vilogia\n• Type client : Bailleur social\n• TVA : 10%\n\nLes doublons exacts (désignation + bailleur + prix HT) seront SAUTÉS.\nLes prestations existantes avec un prix différent seront listées pour validation.`)) return;
+
+  // Index des existants par designation+bailleur
+  const existing = new Map();
+  tarifs.forEach(t => {
+    if ((t.bailleur || '') === 'Vilogia') {
+      existing.set((t.designation || '').toLowerCase(), t);
+    }
+  });
+
+  const toAdd = [];
+  const toReview = [];
+  const skipped = [];
+
+  VILOGIA_TARIFS.forEach(v => {
+    const key = v.designation.toLowerCase();
+    const existant = existing.get(key);
+    if (!existant) {
+      toAdd.push(v);
+    } else if (existant.prixHT === v.prixHT) {
+      skipped.push(v.designation);
+    } else {
+      toReview.push({nouveau: v, existant});
+    }
+  });
+
+  let msg = `📊 ANALYSE DES IMPORTS\n\n`;
+  msg += `• ${toAdd.length} nouveaux tarifs à ajouter\n`;
+  msg += `• ${skipped.length} doublons exacts ignorés\n`;
+  msg += `• ${toReview.length} prestations existantes avec prix différent\n\n`;
+
+  if (toReview.length > 0) {
+    msg += `Les conflits seront affichés un par un.\n`;
+  }
+  msg += `\nProcéder à l'import des ${toAdd.length} nouveaux tarifs ?`;
+
+  if (!confirm(msg)) return;
+
+  // Traiter les conflits un par un
+  for (const conflict of toReview) {
+    const { nouveau, existant } = conflict;
+    const choice = confirm(
+      `⚠ CONFLIT DE PRIX\n\n` +
+      `Prestation : ${nouveau.designation}\n\n` +
+      `Existant : ${existant.prixHT} € HT (devis: ${existant.devisSource || 'n/a'})\n` +
+      `Nouveau  : ${nouveau.prixHT} € HT (devis: ${nouveau.devisSource})\n\n` +
+      `OK = Remplacer par le nouveau\n` +
+      `Annuler = Garder l'existant`
+    );
+    if (choice) {
+      // Remplacer
+      const updated = buildVilogiaTarif(nouveau);
+      updated._id = existant._id;
+      updated.createdAt = existant.createdAt || new Date().toISOString();
+      if (db) {
+        await getTarifsRef().child(existant._id).set(updated);
+      } else {
+        const idx = tarifs.findIndex(t => t._id === existant._id);
+        if (idx >= 0) tarifs[idx] = updated;
+      }
+    }
+  }
+
+  // Ajouter les nouveaux
+  let added = 0;
+  for (const v of toAdd) {
+    const data = buildVilogiaTarif(v);
+    if (db) {
+      const ref = getTarifsRef().push();
+      await ref.set(data);
+    } else {
+      data._id = 'local_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+      tarifs.push(data);
+    }
+    added++;
+  }
+
+  if (!db) saveLocal();
+
+  showNotif(`✅ ${added} nouveaux tarifs Vilogia importés (${skipped.length} doublons ignorés)`, 'success');
+
+  // Aller sur le filtre Vilogia
+  setTimeout(() => filterBailleur('Vilogia'), 500);
+}
+
+function buildVilogiaTarif(v) {
+  const tva = 10;
+  const prixTTC = v.prixHT * (1 + tva/100);
+  return {
+    designation: v.designation,
+    categorie: v.categorie,
+    typeClient: 'Bailleur social',
+    bailleur: 'Vilogia',
+    reference: '',
+    unite: v.unite || 'forfait',
+    prixHT: Math.round(v.prixHT * 100) / 100,
+    prixUnitaire: Math.round((v.prixUnitaire || v.prixHT) * 100) / 100,
+    metrageRef: v.metrageRef || '',
+    devisSource: v.devisSource || '',
+    tva,
+    remise: 0,
+    prixTTC: Math.round(prixTTC * 100) / 100,
+    notes: v.note || '',
+    isPNOU: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   const cfg = loadConfig() || FIREBASE_CONFIG_DEFAULT;
