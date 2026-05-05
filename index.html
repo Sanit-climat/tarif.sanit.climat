@@ -1109,6 +1109,22 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
   </div>
 </div>
 
+<!-- MODAL HISTORIQUE PRIX -->
+<div class="modal-overlay" id="modal-history">
+  <div class="modal" style="max-width: 720px;">
+    <div class="modal-head">
+      <div class="modal-title" id="history-title">📊 Historique des prix</div>
+      <button class="modal-close" onclick="closeModal('modal-history')">✕</button>
+    </div>
+    <div class="modal-body" id="history-body">
+      <!-- Contenu injecté dynamiquement -->
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-history')">Fermer</button>
+    </div>
+  </div>
+</div>
+
 <!-- NOTIFICATION -->
 <div class="notif" id="notif"></div>
 
@@ -1308,6 +1324,65 @@ function deleteTarif(id) {
   }
 }
 
+function showPriceHistory(id) {
+  const t = tarifs.find(t => t._id === id);
+  if (!t || !t.historiquePrix || !t.historiquePrix.length) {
+    showNotif('Aucun historique pour ce tarif', 'error');
+    return;
+  }
+  const hist = [...t.historiquePrix].sort((a,b) => (b.prixHT || 0) - (a.prixHT || 0));
+  const prixMax = Math.max(...hist.map(h => h.prixHT || 0));
+  const prixMin = Math.min(...hist.map(h => h.prixHT || 0));
+  const prixMoy = hist.reduce((s,h) => s + (h.prixHT || 0), 0) / hist.length;
+
+  document.getElementById('history-title').innerHTML = `📊 Historique des prix — <span style="color:var(--blue-mid); font-size:14px;">${esc(t.designation)}</span>`;
+
+  let html = `
+    <div style="background: var(--gray-50); padding: 14px; border-radius: 8px; margin-bottom: 16px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; text-align: center;">
+      <div><div style="font-size:10px; color:var(--gray-500); text-transform:uppercase;">Min</div><div style="font-size:16px; font-weight:700; color:var(--green);">${formatPrix(prixMin)} €</div></div>
+      <div><div style="font-size:10px; color:var(--gray-500); text-transform:uppercase;">Moyenne</div><div style="font-size:16px; font-weight:700; color:var(--gray-700);">${formatPrix(prixMoy)} €</div></div>
+      <div><div style="font-size:10px; color:var(--gray-500); text-transform:uppercase;">Max (affiché)</div><div style="font-size:16px; font-weight:700; color:var(--orange);">${formatPrix(prixMax)} €</div></div>
+      <div><div style="font-size:10px; color:var(--gray-500); text-transform:uppercase;">Occurrences</div><div style="font-size:16px; font-weight:700;">${hist.length}</div></div>
+    </div>
+
+    <div style="background: white; border:1px solid var(--gray-200); border-radius: 8px; overflow: hidden;">
+      <div style="display: grid; grid-template-columns: 110px 100px 1fr 130px; gap: 8px; padding: 10px 14px; background: var(--gray-50); font-size: 11px; font-weight: 700; color: var(--gray-500); text-transform: uppercase; border-bottom: 1px solid var(--gray-200);">
+        <div>Prix HT</div>
+        <div>Métrage</div>
+        <div>Note / Contexte</div>
+        <div>Devis source</div>
+      </div>
+  `;
+
+  hist.forEach((h, i) => {
+    const isMax = h.prixHT === prixMax;
+    const bgColor = isMax ? '#FFF8E5' : (i % 2 === 0 ? 'white' : 'var(--gray-50)');
+    html += `
+      <div style="display: grid; grid-template-columns: 110px 100px 1fr 130px; gap: 8px; padding: 10px 14px; background: ${bgColor}; font-size: 12px; border-bottom: 1px solid var(--gray-100); align-items: center;">
+        <div style="font-weight: ${isMax ? '700' : '600'}; color: ${isMax ? 'var(--orange)' : 'var(--gray-700)'};">
+          ${formatPrix(h.prixHT)} € ${isMax ? '<span style="font-size:9px; background:var(--orange); color:white; padding:1px 5px; border-radius:3px; margin-left:4px;">AFFICHÉ</span>' : ''}
+          ${h.prixUnitaire && h.prixUnitaire !== h.prixHT ? `<div style="font-size:10px; color:var(--gray-500); font-weight:400;">${formatPrix(h.prixUnitaire)} €/${esc(h.unite || 'u')}</div>` : ''}
+        </div>
+        <div style="font-size: 11px; color: var(--gray-600);">${h.metrageRef ? '📐 ' + esc(h.metrageRef) : '<span style="color:var(--gray-300);">—</span>'}</div>
+        <div style="font-size: 11px; color: var(--gray-600);">
+          ${h.note ? esc(h.note) : '<span style="color:var(--gray-300);">—</span>'}
+          ${h.isChantier ? '<div style="font-size:10px; color:#7C3AED; margin-top:2px;">🏗 ' + esc(h.chantierGlobal || 'Chantier') + '</div>' : ''}
+        </div>
+        <div style="font-size: 10px; font-family: monospace; color: var(--gray-500);">${esc(h.devisSource || '—')}</div>
+      </div>
+    `;
+  });
+
+  html += `</div>
+    <div style="margin-top: 12px; padding: 10px 14px; background: var(--blue-light); border-radius: var(--radius); font-size: 11px; color: var(--blue-mid);">
+      💡 Le prix affiché dans le tableau principal est le <strong>plus cher</strong> de l'historique (règle de tarification Sanit Climat).
+    </div>
+  `;
+
+  document.getElementById('history-body').innerHTML = html;
+  document.getElementById('modal-history').classList.add('open');
+}
+
 function editTarif(id) {
   const t = tarifs.find(t => t._id === id);
   if (!t) return;
@@ -1382,14 +1457,23 @@ function renderTable() {
   empty.classList.add('hidden');
   document.getElementById('table-title').textContent = `${getFilterLabel()} — ${data.length} tarif(s)`;
 
-  tbody.innerHTML = data.map(t => `
-    <tr>
+  tbody.innerHTML = data.map(t => {
+    const histCount = (t.historiquePrix && t.historiquePrix.length) || 0;
+    const hasMultiplePrices = histCount > 1;
+    const isChantier = t.isChantier || (t.chantierGlobal && t.chantierGlobal.length > 0);
+    return `
+    <tr ${hasMultiplePrices ? `onclick="showPriceHistory('${t._id}')" style="cursor:pointer;" title="Cliquer pour voir l'historique des prix"` : ''}>
       <td style="text-align:center;">
         ${t.isPNOU ? '<span title="PNOU" style="font-size:14px; color:var(--pnou-color);">★</span>' : ''}
       </td>
       <td>
-        <div style="font-weight:600; font-size:13px;">${esc(t.designation)}</div>
+        <div style="font-weight:600; font-size:13px;">
+          ${esc(t.designation)}
+          ${isChantier ? '<span style="display:inline-block; margin-left:6px; font-size:10px; background:#7C3AED; color:white; padding:2px 6px; border-radius:3px; font-weight:600; vertical-align:middle;" title="' + esc(t.chantierGlobal || 'Ligne de chantier') + '">🏗 CHANTIER</span>' : ''}
+          ${hasMultiplePrices ? `<span style="display:inline-block; margin-left:6px; font-size:10px; background:#0EA5E9; color:white; padding:2px 6px; border-radius:3px; font-weight:600; vertical-align:middle;" title="${histCount} prix dans l'historique - cliquer pour voir">📊 ${histCount} prix</span>` : ''}
+        </div>
         ${t.metrageRef ? `<div style="font-size:10px; color:var(--blue-mid); margin-top:2px;">📐 ${esc(t.metrageRef)}</div>` : ''}
+        ${t.chantierGlobal ? `<div style="font-size:10px; color:#7C3AED; margin-top:2px;">↳ ${esc(t.chantierGlobal)}</div>` : ''}
         ${t.notes ? `<div style="font-size:11px; color:var(--gray-500); margin-top:2px;">${esc(t.notes.substring(0,60))}${t.notes.length>60?'…':''}</div>` : ''}
       </td>
       <td><span style="font-size:12px; background:var(--gray-100); padding:3px 8px; border-radius:4px; color:var(--gray-700);">${esc(t.categorie)}</span></td>
@@ -1402,14 +1486,15 @@ function renderTable() {
       <td style="font-size:12px; color:var(--gray-500);">${esc(t.unite)}</td>
       <td style="font-size:11px; color:var(--gray-700); text-align:right;">${(t.prixUnitaire && t.prixUnitaire !== t.prixHT) ? formatPrix(t.prixUnitaire) + '€' : '<span style="color:var(--gray-300)">—</span>'}</td>
       <td style="font-size:10px; color:var(--gray-500); font-family: monospace;">${esc(t.devisSource || '')}</td>
-      <td>
+      <td onclick="event.stopPropagation();">
         <div class="action-btns">
-          <button class="icon-btn" onclick="editTarif('${t._id}')" title="Modifier">✏</button>
-          <button class="icon-btn del" onclick="deleteTarif('${t._id}')" title="Supprimer">🗑</button>
+          ${hasMultiplePrices ? `<button class="icon-btn" onclick="event.stopPropagation(); showPriceHistory('${t._id}')" title="Historique des prix" style="color:#0EA5E9;">📊</button>` : ''}
+          <button class="icon-btn" onclick="event.stopPropagation(); editTarif('${t._id}')" title="Modifier">✏</button>
+          <button class="icon-btn del" onclick="event.stopPropagation(); deleteTarif('${t._id}')" title="Supprimer">🗑</button>
         </div>
       </td>
     </tr>
-  `).join('');
+  `;}).join('');
 }
 
 function clientBadge(type, isPNOU) {
@@ -1959,609 +2044,5516 @@ const FIREBASE_CONFIG_DEFAULT = {
 ───────────────────────────────────────────── */
 const VILOGIA_TARIFS = [
   {
-    "designation": "Forfait déplacement",
-    "categorie": "Déplacement",
-    "prixHT": 35.0,
-    "unite": "forfait",
-    "prixUnitaire": 35.0,
-    "uniteRef": "déplacement",
-    "metrageRef": null,
-    "note": "Forfait standard sur la quasi-totalité des devis Vilogia",
-    "devisSource": "DEV26-11068 + 17 autres"
-  },
-  {
-    "designation": "Dépose et évacuation baignoire",
-    "categorie": "Plomberie sanitaire",
-    "prixHT": 200.0,
-    "unite": "forfait",
-    "prixUnitaire": 200.0,
-    "uniteRef": "baignoire",
-    "metrageRef": null,
-    "note": "Prix retenu : le plus cher entre 180€ et 200€",
-    "devisSource": "DEV26-11571"
-  },
-  {
-    "designation": "Modification tuyauterie pour déplacement robinet sur baignoire",
-    "categorie": "Plomberie sanitaire",
-    "prixHT": 380.0,
-    "unite": "forfait",
-    "prixUnitaire": 380.0,
-    "uniteRef": "intervention",
-    "metrageRef": null,
-    "note": "",
-    "devisSource": "DEV26-11571"
-  },
-  {
-    "designation": "Fourniture et pose baignoire acier 170 cm",
-    "categorie": "Plomberie sanitaire",
-    "prixHT": 580.0,
-    "unite": "unité",
-    "prixUnitaire": 580.0,
-    "uniteRef": "baignoire",
-    "metrageRef": "170 cm",
-    "note": "Modèle 170 cm spécifié",
-    "devisSource": "DEV26-11571"
-  },
-  {
-    "designation": "Fourniture et pose baignoire acier",
-    "categorie": "Plomberie sanitaire",
-    "prixHT": 660.0,
-    "unite": "unité",
-    "prixUnitaire": 660.0,
-    "uniteRef": "baignoire",
-    "metrageRef": null,
-    "note": "Taille non précisée - prix le plus cher retenu",
-    "devisSource": "DEV26-11151"
-  },
-  {
-    "designation": "Fourniture et pose robinetterie bain/douche",
-    "categorie": "Plomberie sanitaire",
-    "prixHT": 264.0,
-    "unite": "unité",
-    "prixUnitaire": 264.0,
-    "uniteRef": "robinet",
-    "metrageRef": null,
-    "note": "Prix retenu : le plus cher entre 260€ et 264€",
-    "devisSource": "DEV26-11151"
-  },
-  {
-    "designation": "Fourniture et pose tablier PVC",
-    "categorie": "Plomberie sanitaire",
-    "prixHT": 260.0,
-    "unite": "unité",
-    "prixUnitaire": 260.0,
-    "uniteRef": "tablier",
-    "metrageRef": null,
-    "note": "Prix retenu : le plus cher entre 228€ et 260€",
-    "devisSource": "DEV26-11571"
-  },
-  {
-    "designation": "Forfait dépose et évacuation tablier carreler",
-    "categorie": "Plomberie sanitaire",
-    "prixHT": 216.0,
-    "unite": "forfait",
-    "prixUnitaire": 216.0,
-    "uniteRef": "tablier",
-    "metrageRef": null,
-    "note": "",
-    "devisSource": "DEV26-11151"
-  },
-  {
-    "designation": "Fourniture et pose margelle siporex à carreler 8cm",
-    "categorie": "Plomberie sanitaire",
-    "prixHT": 540.0,
-    "unite": "unité",
-    "prixUnitaire": 540.0,
-    "uniteRef": "margelle",
-    "metrageRef": "épaisseur 8cm",
-    "note": "",
-    "devisSource": "DEV26-11571"
-  },
-  {
-    "designation": "Forfait dépose et repose mobilier lavabo",
-    "categorie": "Plomberie sanitaire",
-    "prixHT": 300.0,
-    "unite": "forfait",
-    "prixUnitaire": 300.0,
-    "uniteRef": "mobilier",
-    "metrageRef": null,
-    "note": "",
-    "devisSource": "DEV26-11571"
-  },
-  {
-    "designation": "Fourniture et remplacement meuble sous-vasque 100x60cm",
-    "categorie": "Plomberie sanitaire",
-    "prixHT": 540.0,
-    "unite": "unité",
-    "prixUnitaire": 540.0,
-    "uniteRef": "meuble",
-    "metrageRef": "L100 x H60 cm",
-    "note": "",
-    "devisSource": "DEV26-11718"
-  },
-  {
-    "designation": "Fourniture et pose joint silicone pourtour bac à douche",
-    "categorie": "Plomberie sanitaire",
-    "prixHT": 160.0,
-    "unite": "forfait",
-    "prixUnitaire": 160.0,
-    "uniteRef": "bac",
-    "metrageRef": null,
-    "note": "",
-    "devisSource": "DEV26-11853"
-  },
-  {
-    "designation": "Fourniture et pose barre de maintien extrémité paroi",
-    "categorie": "Plomberie sanitaire",
-    "prixHT": 216.0,
-    "unite": "unité",
-    "prixUnitaire": 216.0,
-    "uniteRef": "barre",
-    "metrageRef": null,
-    "note": "",
-    "devisSource": "DEV26-11694"
-  },
-  {
-    "designation": "Forfait fourniture et remplacement mécanisme de chasse WC",
-    "categorie": "Plomberie sanitaire",
-    "prixHT": 130.0,
-    "unite": "forfait",
-    "prixUnitaire": 130.0,
-    "uniteRef": "mécanisme",
-    "metrageRef": null,
-    "note": "",
-    "devisSource": "DEV26-11335"
-  },
-  {
-    "designation": "Fourniture et remplacement vanne 2 voies + tête thermostatique",
-    "categorie": "Plomberie chauffage",
-    "prixHT": 850.0,
-    "unite": "unité",
-    "prixUnitaire": 850.0,
-    "uniteRef": "vanne",
-    "metrageRef": null,
-    "note": "",
-    "devisSource": "DEV26-11645"
-  },
-  {
-    "designation": "Fourniture et remplacement raccord fuyard encastré",
-    "categorie": "Plomberie",
-    "prixHT": 300.0,
-    "unite": "unité",
-    "prixUnitaire": 300.0,
-    "uniteRef": "raccord",
-    "metrageRef": null,
-    "note": "",
-    "devisSource": "DEV26-11338"
-  },
-  {
-    "designation": "Fourniture et remplacement verrou RAIN BIRD",
-    "categorie": "Plomberie",
-    "prixHT": 432.0,
-    "unite": "unité",
-    "prixUnitaire": 432.0,
-    "uniteRef": "verrou",
-    "metrageRef": null,
-    "note": "",
-    "devisSource": "DEV26-11338"
-  },
-  {
-    "designation": "Forfait dépose des dalles terrasse",
-    "categorie": "Étanchéité",
-    "prixHT": 180.0,
-    "unite": "m²",
-    "prixUnitaire": 15.0,
-    "uniteRef": "m²",
-    "metrageRef": "12 m²",
-    "note": "Prix forfait pour 12m² ; unitaire 15€HT/m²",
-    "devisSource": "DEV26-11554"
-  },
-  {
-    "designation": "Forfait création chape avec reprise de pente",
-    "categorie": "Étanchéité",
-    "prixHT": 1320.0,
-    "unite": "m²",
-    "prixUnitaire": 110.0,
-    "uniteRef": "m²",
-    "metrageRef": "12 m²",
-    "note": "Prix forfait pour 12m² ; unitaire 110€HT/m²",
-    "devisSource": "DEV26-11554"
-  },
-  {
-    "designation": "Forfait fourniture et pose étanchéité",
-    "categorie": "Étanchéité",
-    "prixHT": 1200.0,
-    "unite": "m²",
-    "prixUnitaire": 100.0,
-    "uniteRef": "m²",
-    "metrageRef": "12 m²",
-    "note": "Prix forfait pour 12m² ; unitaire 100€HT/m²",
-    "devisSource": "DEV26-11554"
-  },
-  {
-    "designation": "Forfait repose des dalles terrasse",
-    "categorie": "Étanchéité",
-    "prixHT": 300.0,
-    "unite": "m²",
-    "prixUnitaire": 25.0,
-    "uniteRef": "m²",
-    "metrageRef": "12 m²",
-    "note": "Prix forfait pour 12m² ; unitaire 25€HT/m²",
-    "devisSource": "DEV26-11554"
-  },
-  {
-    "designation": "Forfait fourniture et remplacement plots",
-    "categorie": "Étanchéité",
-    "prixHT": 180.0,
-    "unite": "m²",
-    "prixUnitaire": 15.0,
-    "uniteRef": "m²",
-    "metrageRef": "12 m²",
-    "note": "Prix forfait pour 12m² ; unitaire 15€HT/m²",
-    "devisSource": "DEV26-11554"
-  },
-  {
-    "designation": "Forfait manutention mobilier",
-    "categorie": "Étanchéité",
-    "prixHT": 216.0,
-    "unite": "forfait",
-    "prixUnitaire": 216.0,
-    "uniteRef": "intervention",
-    "metrageRef": null,
-    "note": "",
-    "devisSource": "DEV26-11940"
-  },
-  {
-    "designation": "Forfait dépose et stockage dalles existantes",
-    "categorie": "Étanchéité",
-    "prixHT": 360.0,
-    "unite": "forfait",
-    "prixUnitaire": 360.0,
-    "uniteRef": "intervention",
-    "metrageRef": null,
-    "note": "",
-    "devisSource": "DEV26-11940"
-  },
-  {
-    "designation": "Forfait aspiration eau stagnante & nettoyage support",
-    "categorie": "Étanchéité",
-    "prixHT": 396.0,
-    "unite": "forfait",
-    "prixUnitaire": 396.0,
-    "uniteRef": "intervention",
-    "metrageRef": null,
-    "note": "",
-    "devisSource": "DEV26-11940"
-  },
-  {
-    "designation": "Fourniture et pose solin étanchéité",
-    "categorie": "Étanchéité",
-    "prixHT": 1152.0,
+    "designation": "Démolition et évacuation carrelage sol pour accès tuyauterie",
+    "categorie": "Carrelage",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 4290,
+    "prixUnitaire": 4290,
     "unite": "ml",
-    "prixUnitaire": 72.0,
-    "uniteRef": "ml",
-    "metrageRef": "16 ML",
-    "note": "Prix forfait pour 16ML ; unitaire 72€HT/ml",
-    "devisSource": "DEV26-11940"
+    "metrageRef": "12 ml",
+    "note": "Démolition jusqu'au WC pour accès tuyauterie",
+    "devisSource": "DEV26-11532",
+    "isChantier": true,
+    "chantierGlobal": "Travaux carrelage suite fuite (8460€)",
+    "historiquePrix": [
+      {
+        "prixHT": 4290,
+        "prixUnitaire": 4290,
+        "unite": "ml",
+        "metrageRef": "12 ml",
+        "note": "Démolition jusqu'au WC pour accès tuyauterie",
+        "devisSource": "DEV26-11532",
+        "isChantier": true,
+        "chantierGlobal": "Travaux carrelage suite fuite (8460€)"
+      }
+    ]
   },
   {
-    "designation": "Fourniture et pose plot extra-plat & réglage",
-    "categorie": "Étanchéité",
-    "prixHT": 696.0,
+    "designation": "Forfait création saignée faïence baignoire avec dépose carrelage",
+    "categorie": "Carrelage",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 350.0,
+    "prixUnitaire": 350,
     "unite": "forfait",
-    "prixUnitaire": 696.0,
-    "uniteRef": "intervention",
-    "metrageRef": null,
+    "metrageRef": "",
     "note": "",
-    "devisSource": "DEV26-11940"
+    "devisSource": "DEV26-11890",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 350.0,
+        "prixUnitaire": 350,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11890",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
   },
   {
-    "designation": "Forfait repose dalles existantes avec découpe latérale",
-    "categorie": "Étanchéité",
-    "prixHT": 504.0,
+    "designation": "Forfait recollage plinthe décollée",
+    "categorie": "Carrelage",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 108.0,
+    "prixUnitaire": 108.0,
     "unite": "forfait",
-    "prixUnitaire": 504.0,
-    "uniteRef": "intervention",
-    "metrageRef": null,
+    "metrageRef": "",
     "note": "",
-    "devisSource": "DEV26-11940"
+    "devisSource": "DEV26-12437",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 108.0,
+        "prixUnitaire": 108.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-12437",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
   },
   {
-    "designation": "Forfait travaux type cordiste - fissure depuis boîte à eau façade",
-    "categorie": "Étanchéité",
-    "prixHT": 540.0,
+    "designation": "Fourniture et pose carrelage sol",
+    "categorie": "Carrelage",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 6000.0,
+    "prixUnitaire": 120.0,
+    "unite": "m²",
+    "metrageRef": "50 m²",
+    "note": "Carrelage gris terrasse, chambre, couloir. Forfait 50m² ; unitaire 120€HT/m²",
+    "devisSource": "DEV26-11532",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 6000.0,
+        "prixUnitaire": 120.0,
+        "unite": "m²",
+        "metrageRef": "50 m²",
+        "note": "Carrelage gris terrasse, chambre, couloir. Forfait 50m² ; unitaire 120€HT/m²",
+        "devisSource": "DEV26-11532",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose plinthe",
+    "categorie": "Carrelage",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 962.5,
+    "prixUnitaire": 27.5,
+    "unite": "ml",
+    "metrageRef": "35 ML",
+    "note": "Forfait 35ML ; unitaire 27,50€HT/ml",
+    "devisSource": "DEV26-11532",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 962.5,
+        "prixUnitaire": 27.5,
+        "unite": "ml",
+        "metrageRef": "35 ML",
+        "note": "Forfait 35ML ; unitaire 27,50€HT/ml",
+        "devisSource": "DEV26-11532",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et rebouchage saignée avec reprise faïence partielle et joint silicone",
+    "categorie": "Carrelage",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 900.0,
+    "prixUnitaire": 900,
     "unite": "forfait",
-    "prixUnitaire": 540.0,
-    "uniteRef": "intervention",
-    "metrageRef": null,
-    "note": "",
-    "devisSource": "DEV26-11940"
-  },
-  {
-    "designation": "Fourniture et application résine chimique ton pierre sur fissure",
-    "categorie": "Étanchéité",
-    "prixHT": 456.0,
-    "unite": "forfait",
-    "prixUnitaire": 456.0,
-    "uniteRef": "intervention",
-    "metrageRef": null,
-    "note": "",
-    "devisSource": "DEV26-11940"
-  },
-  {
-    "designation": "Fourniture et application silicone extérieur translucide",
-    "categorie": "Étanchéité",
-    "prixHT": 324.0,
-    "unite": "forfait",
-    "prixUnitaire": 324.0,
-    "uniteRef": "intervention",
-    "metrageRef": null,
-    "note": "Jonction couvertine & platine garde-corps",
-    "devisSource": "DEV26-11940"
-  },
-  {
-    "designation": "Fourniture et reprise étanchéité descente EP",
-    "categorie": "Étanchéité",
-    "prixHT": 260.0,
-    "unite": "unité",
-    "prixUnitaire": 260.0,
-    "uniteRef": "descente",
-    "metrageRef": null,
-    "note": "Prix unitaire par descente",
-    "devisSource": "DEV26-11753"
-  },
-  {
-    "designation": "Forfait débouchage EP avec retrait mousse PU",
-    "categorie": "Étanchéité",
-    "prixHT": 540.0,
-    "unite": "forfait",
-    "prixUnitaire": 540.0,
-    "uniteRef": "intervention",
-    "metrageRef": null,
-    "note": "",
-    "devisSource": "DEV26-11068"
-  },
-  {
-    "designation": "Forfait recherche de fuite en toiture",
-    "categorie": "Recherche de fuite",
-    "prixHT": 450.0,
-    "unite": "forfait",
-    "prixUnitaire": 450.0,
-    "uniteRef": "intervention",
-    "metrageRef": null,
-    "note": "",
-    "devisSource": "DEV26-11853"
+    "metrageRef": "",
+    "note": "Rebouchage + faïence partielle + joint silicone",
+    "devisSource": "DEV26-11890",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 900.0,
+        "prixUnitaire": 900,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Rebouchage + faïence partielle + joint silicone",
+        "devisSource": "DEV26-11890",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
   },
   {
     "designation": "Forfait diagnostic de panne",
     "categorie": "Diagnostic",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
     "prixHT": 180.0,
-    "unite": "forfait",
     "prixUnitaire": 180.0,
-    "uniteRef": "intervention",
-    "metrageRef": null,
+    "unite": "forfait",
+    "metrageRef": "",
     "note": "",
-    "devisSource": "DEV26-11581"
+    "devisSource": "DEV26-11581",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 180.0,
+        "prixUnitaire": 180.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11581",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
   },
   {
-    "designation": "Fourniture et remplacement cylindre 40/50 Y7",
-    "categorie": "Serrurerie",
+    "designation": "Forfait déplacement Marseille et alentours",
+    "categorie": "Déplacement",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 35.0,
+    "prixUnitaire": 35.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Déplacement standard zone Marseille et proche périphérie",
+    "devisSource": "DEV26-11068 + nombreux",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 35.0,
+        "prixUnitaire": 35.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Déplacement standard zone Marseille et proche périphérie",
+        "devisSource": "DEV26-11068 + nombreux",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait déplacement hors Marseille",
+    "categorie": "Déplacement",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 50.0,
+    "prixUnitaire": 50.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Déplacement zones éloignées (Le Beausset, Lunel...)",
+    "devisSource": "DEV26-11415",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 50.0,
+        "prixUnitaire": 50.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Déplacement zones éloignées (Le Beausset, Lunel...)",
+        "devisSource": "DEV26-11415",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait diagnostic de panne menuiserie/volet roulant",
+    "categorie": "Menuiserie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 180.0,
+    "prixUnitaire": 180,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Diag panne VR (volet roulant) - distinct du diag générique",
+    "devisSource": "DEV26-11899",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 180.0,
+        "prixUnitaire": 180,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Diag panne VR (volet roulant) - distinct du diag générique",
+        "devisSource": "DEV26-11899",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait remise en place et dégripage tablier volet roulant",
+    "categorie": "Menuiserie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
     "prixHT": 170.0,
-    "unite": "unité",
     "prixUnitaire": 170.0,
-    "uniteRef": "cylindre",
-    "metrageRef": "40/50 Y7",
-    "note": "",
-    "devisSource": "DEV26-11713"
-  },
-  {
-    "designation": "Fourniture et pose cylindre 30/30",
-    "categorie": "Serrurerie",
-    "prixHT": 150.0,
-    "unite": "unité",
-    "prixUnitaire": 150.0,
-    "uniteRef": "cylindre",
-    "metrageRef": "30/30",
-    "note": "",
-    "devisSource": "DEV26-11713"
-  },
-  {
-    "designation": "Forfait ouverture porte dans local",
-    "categorie": "Serrurerie",
-    "prixHT": 180.0,
     "unite": "forfait",
-    "prixUnitaire": 180.0,
-    "uniteRef": "intervention",
-    "metrageRef": null,
-    "note": "",
-    "devisSource": "DEV26-11713"
+    "metrageRef": "",
+    "note": "Volet roulant - dégripage et remise en place du tablier",
+    "devisSource": "DEV26-11129 + DEV26-11132",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 170.0,
+        "prixUnitaire": 170.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Volet roulant - dégripage et remise en place du tablier",
+        "devisSource": "DEV26-11129 + DEV26-11132",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
   },
   {
-    "designation": "Fourniture et remplacement coffre à larder A40",
-    "categorie": "Serrurerie",
-    "prixHT": 130.0,
-    "unite": "unité",
-    "prixUnitaire": 130.0,
-    "uniteRef": "coffre",
-    "metrageRef": "A40",
-    "note": "",
-    "devisSource": "DEV26-11713"
+    "designation": "Forfait reprise des 4 fixations DVA",
+    "categorie": "Menuiserie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 70.0,
+    "prixUnitaire": 70.0,
+    "unite": "forfait",
+    "metrageRef": "4 fixations",
+    "note": "Reprise fixations DVA volet roulant",
+    "devisSource": "DEV26-11132",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 70.0,
+        "prixUnitaire": 70.0,
+        "unite": "forfait",
+        "metrageRef": "4 fixations",
+        "note": "Reprise fixations DVA volet roulant",
+        "devisSource": "DEV26-11132",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
   },
   {
-    "designation": "Fourniture et remplacement poignée HIONNA",
-    "categorie": "Serrurerie",
-    "prixHT": 135.0,
-    "unite": "unité",
-    "prixUnitaire": 135.0,
-    "uniteRef": "poignée",
-    "metrageRef": "modèle HIONNA",
+    "designation": "Forfait reprise fixation tringle fenêtre avec remise en jeu",
+    "categorie": "Menuiserie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 140.0,
+    "prixUnitaire": 140,
+    "unite": "forfait",
+    "metrageRef": "",
     "note": "",
-    "devisSource": "DEV26-11713"
+    "devisSource": "DEV26-11897",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 140.0,
+        "prixUnitaire": 140,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11897",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait réglage porte fenêtre",
+    "categorie": "Menuiserie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 132.0,
+    "prixUnitaire": 132.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11103",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 132.0,
+        "prixUnitaire": 132.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11103",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement crémone porte fenêtre",
+    "categorie": "Menuiserie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 270.0,
+    "prixUnitaire": 270.0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11128",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 270.0,
+        "prixUnitaire": 270.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11128",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement manivelle volet roulant",
+    "categorie": "Menuiserie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 190.0,
+    "prixUnitaire": 190.0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11128",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 190.0,
+        "prixUnitaire": 190.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11128",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement porte cuisine alvéolaire postformée",
+    "categorie": "Menuiserie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 450.0,
+    "prixUnitaire": 450.0,
+    "unite": "unité",
+    "metrageRef": "820 x 201",
+    "note": "Avec coffre à larder et poignée",
+    "devisSource": "DEV26-11529",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 450.0,
+        "prixUnitaire": 450.0,
+        "unite": "unité",
+        "metrageRef": "820 x 201",
+        "note": "Avec coffre à larder et poignée",
+        "devisSource": "DEV26-11529",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
   },
   {
     "designation": "Fourniture et remplacement porte palière âme pleine H2040 x L930mm",
     "categorie": "Menuiserie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
     "prixHT": 1500.0,
-    "unite": "unité",
     "prixUnitaire": 1500.0,
-    "uniteRef": "porte",
+    "unite": "unité",
     "metrageRef": "H2040 x L930",
     "note": "Cadre bois dur, stratifié 2 faces identiques, poignées et paumelles incluses",
-    "devisSource": "DEV26-11689"
+    "devisSource": "DEV26-11689",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 1500.0,
+        "prixUnitaire": 1500.0,
+        "unite": "unité",
+        "metrageRef": "H2040 x L930",
+        "note": "Cadre bois dur, stratifié 2 faces identiques, poignées et paumelles incluses",
+        "devisSource": "DEV26-11689",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
   },
   {
-    "designation": "Fourniture et reprise enduit + peinture salle de bain",
-    "categorie": "Peinture",
-    "prixHT": 660.0,
-    "unite": "forfait",
-    "prixUnitaire": 660.0,
-    "uniteRef": "salle de bain",
-    "metrageRef": null,
-    "note": "Prix retenu : le plus cher entre 636€ et 660€",
-    "devisSource": "DEV26-11704"
-  },
-  {
-    "designation": "Forfait rebouchage partiel du mur",
-    "categorie": "Peinture",
-    "prixHT": 192.0,
-    "unite": "forfait",
-    "prixUnitaire": 192.0,
-    "uniteRef": "intervention",
-    "metrageRef": null,
+    "designation": "Fourniture et remplacement portes placard coulissantes",
+    "categorie": "Menuiserie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 600.0,
+    "prixUnitaire": 600.0,
+    "unite": "unité",
+    "metrageRef": "L1600 x H2500",
     "note": "",
-    "devisSource": "DEV26-11338"
+    "devisSource": "DEV26-11530",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 600.0,
+        "prixUnitaire": 600.0,
+        "unite": "unité",
+        "metrageRef": "L1600 x H2500",
+        "note": "",
+        "devisSource": "DEV26-11530",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
   },
   {
-    "designation": "Forfait fourniture et reprise enduit façade partiel",
-    "categorie": "Peinture",
-    "prixHT": 192.0,
-    "unite": "forfait",
-    "prixUnitaire": 192.0,
-    "uniteRef": "intervention",
-    "metrageRef": null,
+    "designation": "Fourniture et reprise fixation paumelle",
+    "categorie": "Menuiserie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 96.0,
+    "prixUnitaire": 96.0,
+    "unite": "unité",
+    "metrageRef": "",
     "note": "",
-    "devisSource": "DEV26-11338"
+    "devisSource": "DEV26-11103",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 96.0,
+        "prixUnitaire": 96.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11103",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
   },
   {
-    "designation": "Fourniture et pose faïence 20x20 blanc",
-    "categorie": "Peinture",
-    "prixHT": 1400.0,
+    "designation": "Fourniture et reprise fixation porte fenêtre",
+    "categorie": "Menuiserie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 108.0,
+    "prixUnitaire": 108.0,
     "unite": "forfait",
-    "prixUnitaire": 1400.0,
-    "uniteRef": "intervention",
-    "metrageRef": null,
-    "note": "Coin baignoire - métrage non précisé",
-    "devisSource": "DEV26-11571"
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11103",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 108.0,
+        "prixUnitaire": 108.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11103",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
   },
   {
     "designation": "Forfait démolition pour accès tuyauterie",
     "categorie": "Peinture",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
     "prixHT": 216.0,
-    "unite": "forfait",
     "prixUnitaire": 216.0,
-    "uniteRef": "intervention",
-    "metrageRef": null,
+    "unite": "forfait",
+    "metrageRef": "",
     "note": "",
-    "devisSource": "DEV26-11338"
+    "devisSource": "DEV26-11338",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 216.0,
+        "prixUnitaire": 216.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11338",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait fourniture et reprise enduit façade partiel",
+    "categorie": "Peinture",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 192.0,
+    "prixUnitaire": 192.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11338",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 192.0,
+        "prixUnitaire": 192.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11338",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait nettoyage et replis fin de chantier",
+    "categorie": "Peinture",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 180.0,
+    "prixUnitaire": 180.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Fin de chantier",
+    "devisSource": "DEV26-11532",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 180.0,
+        "prixUnitaire": 180.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Fin de chantier",
+        "devisSource": "DEV26-11532",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait protection sol et mobilier",
+    "categorie": "Peinture",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 60.0,
+    "prixUnitaire": 60.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Protection avant peinture",
+    "devisSource": "DEV26-11453",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 60.0,
+        "prixUnitaire": 60.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Protection avant peinture",
+        "devisSource": "DEV26-11453",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait rebouchage partiel du mur",
+    "categorie": "Peinture",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 192.0,
+    "prixUnitaire": 192.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11338",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 192.0,
+        "prixUnitaire": 192.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11338",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait reprise enduit des murs",
+    "categorie": "Peinture",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 245.0,
+    "prixUnitaire": 7.0,
+    "unite": "m²",
+    "metrageRef": "35 m²",
+    "note": "Reprise enduit ; unitaire 7€HT/m²",
+    "devisSource": "DEV26-11453",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 245.0,
+        "prixUnitaire": 7.0,
+        "unite": "m²",
+        "metrageRef": "35 m²",
+        "note": "Reprise enduit ; unitaire 7€HT/m²",
+        "devisSource": "DEV26-11453",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et mise en peinture 2 couches blanc velours lessivable",
+    "categorie": "Peinture",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 735.0,
+    "prixUnitaire": 21.0,
+    "unite": "m²",
+    "metrageRef": "35 m²",
+    "note": "Peinture 2 couches blanc velours lessivable ; unitaire 21€HT/m²",
+    "devisSource": "DEV26-11453",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 735.0,
+        "prixUnitaire": 21.0,
+        "unite": "m²",
+        "metrageRef": "35 m²",
+        "note": "Peinture 2 couches blanc velours lessivable ; unitaire 21€HT/m²",
+        "devisSource": "DEV26-11453",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose faïence 20/20 blanc sur 1 pan de mur",
+    "categorie": "Peinture",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 360.0,
+    "prixUnitaire": 360.0,
+    "unite": "forfait",
+    "metrageRef": "1 pan de mur",
+    "note": "",
+    "devisSource": "DEV26-11431",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 360.0,
+        "prixUnitaire": 360.0,
+        "unite": "forfait",
+        "metrageRef": "1 pan de mur",
+        "note": "",
+        "devisSource": "DEV26-11431",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose faïence 20x20 blanc coin baignoire",
+    "categorie": "Peinture",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 1400.0,
+    "prixUnitaire": 1400.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Coin baignoire - métrage non précisé",
+    "devisSource": "DEV26-11571",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 1400.0,
+        "prixUnitaire": 1400.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Coin baignoire - métrage non précisé",
+        "devisSource": "DEV26-11571",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
   },
   {
     "designation": "Fourniture et pose trappe 30x30",
     "categorie": "Peinture",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
     "prixHT": 300.0,
-    "unite": "unité",
     "prixUnitaire": 300.0,
-    "uniteRef": "trappe",
+    "unite": "unité",
     "metrageRef": "30x30",
     "note": "",
-    "devisSource": "DEV26-11694"
+    "devisSource": "DEV26-11694",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 300.0,
+        "prixUnitaire": 300.0,
+        "unite": "unité",
+        "metrageRef": "30x30",
+        "note": "",
+        "devisSource": "DEV26-11694",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose trappe de visite sur coffrage colonne",
+    "categorie": "Peinture",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 300.0,
+    "prixUnitaire": 300.0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "Trappe sur coffrage placo colonne",
+    "devisSource": "DEV26-11125",
+    "isChantier": true,
+    "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)",
+    "historiquePrix": [
+      {
+        "prixHT": 300.0,
+        "prixUnitaire": 300.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "Trappe sur coffrage placo colonne",
+        "devisSource": "DEV26-11125",
+        "isChantier": true,
+        "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement carreaux faïence 20x33 cm",
+    "categorie": "Peinture",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 210.0,
+    "prixUnitaire": 105.0,
+    "unite": "forfait",
+    "metrageRef": "2 carreaux 20x33 cm",
+    "note": "Forfait pour 2 carreaux ; unitaire 105€HT/carreau",
+    "devisSource": "DEV26-11133",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 210.0,
+        "prixUnitaire": 105.0,
+        "unite": "forfait",
+        "metrageRef": "2 carreaux 20x33 cm",
+        "note": "Forfait pour 2 carreaux ; unitaire 105€HT/carreau",
+        "devisSource": "DEV26-11133",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et reprise coffrage muret",
+    "categorie": "Peinture",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 420,
+    "prixUnitaire": 420,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11431",
+    "isChantier": true,
+    "chantierGlobal": "Travaux colonne EU avec remplacement",
+    "historiquePrix": [
+      {
+        "prixHT": 420,
+        "prixUnitaire": 420,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11431",
+        "isChantier": true,
+        "chantierGlobal": "Travaux colonne EU avec remplacement"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et reprise enduit + peinture WC",
+    "categorie": "Peinture",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 550.0,
+    "prixUnitaire": 550,
+    "unite": "forfait",
+    "metrageRef": "WC complet (murs + plafond)",
+    "note": "Forfait par pièce",
+    "devisSource": "DEV26-11891",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 550.0,
+        "prixUnitaire": 550,
+        "unite": "forfait",
+        "metrageRef": "WC complet (murs + plafond)",
+        "note": "Forfait par pièce",
+        "devisSource": "DEV26-11891",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et reprise enduit + peinture salle de bain",
+    "categorie": "Peinture",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 920.0,
+    "prixUnitaire": 920,
+    "unite": "forfait",
+    "metrageRef": "SDB complète (murs + plafond)",
+    "note": "Daouch - SDB plus grande / plus chère",
+    "devisSource": "DEV26-11891",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 920.0,
+        "prixUnitaire": 920,
+        "unite": "forfait",
+        "metrageRef": "SDB complète (murs + plafond)",
+        "note": "Daouch - SDB plus grande / plus chère",
+        "devisSource": "DEV26-11891",
+        "isChantier": false,
+        "chantierGlobal": ""
+      },
+      {
+        "prixHT": 660.0,
+        "prixUnitaire": 660.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Plus cher retenu (660€ vs 636€)",
+        "devisSource": "DEV26-11704",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait découpe et évacuation muret pour accès colonne",
+    "categorie": "Plomberie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 540,
+    "prixUnitaire": 540,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11431",
+    "isChantier": true,
+    "chantierGlobal": "Travaux colonne EU avec remplacement",
+    "historiquePrix": [
+      {
+        "prixHT": 540,
+        "prixUnitaire": 540,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11431",
+        "isChantier": true,
+        "chantierGlobal": "Travaux colonne EU avec remplacement"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait dépose et remplacement tampon de visite double sur Y de colonne",
+    "categorie": "Plomberie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 588.0,
+    "prixUnitaire": 588.0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "Y de colonne reliant vasque et machine à laver",
+    "devisSource": "DEV26-11125",
+    "isChantier": true,
+    "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)",
+    "historiquePrix": [
+      {
+        "prixHT": 588.0,
+        "prixUnitaire": 588.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "Y de colonne reliant vasque et machine à laver",
+        "devisSource": "DEV26-11125",
+        "isChantier": true,
+        "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait déviation descente EP traversant mur porteur",
+    "categorie": "Plomberie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 1788.0,
+    "prixUnitaire": 1788.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Déviation vers chaussée",
+    "devisSource": "DEV26-11125",
+    "isChantier": true,
+    "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)",
+    "historiquePrix": [
+      {
+        "prixHT": 1788.0,
+        "prixUnitaire": 1788.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Déviation vers chaussée",
+        "devisSource": "DEV26-11125",
+        "isChantier": true,
+        "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement 3 tronçons de tube ~30cm",
+    "categorie": "Plomberie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 0,
+    "prixUnitaire": 0,
+    "unite": "unité",
+    "metrageRef": "~30 cm par tronçon",
+    "note": "Inclus dans BDC LOG/E34601 - coupure d'eau nécessaire",
+    "devisSource": "DEV26-11567",
+    "isChantier": true,
+    "chantierGlobal": "Travaux complémentaires BDC LOG/E34601 - FAC HABITAT 462,40€",
+    "historiquePrix": [
+      {
+        "prixHT": 0,
+        "prixUnitaire": 0,
+        "unite": "unité",
+        "metrageRef": "~30 cm par tronçon",
+        "note": "Inclus dans BDC LOG/E34601 - coupure d'eau nécessaire",
+        "devisSource": "DEV26-11567",
+        "isChantier": true,
+        "chantierGlobal": "Travaux complémentaires BDC LOG/E34601 - FAC HABITAT 462,40€"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement PVC diamètre 100 et raccords",
+    "categorie": "Plomberie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 1950,
+    "prixUnitaire": 1950,
+    "unite": "ml",
+    "metrageRef": "12 ml",
+    "note": "PVC diam 100 + raccords",
+    "devisSource": "DEV26-11532",
+    "isChantier": true,
+    "chantierGlobal": "Travaux carrelage suite fuite (8460€)",
+    "historiquePrix": [
+      {
+        "prixHT": 1950,
+        "prixUnitaire": 1950,
+        "unite": "ml",
+        "metrageRef": "12 ml",
+        "note": "PVC diam 100 + raccords",
+        "devisSource": "DEV26-11532",
+        "isChantier": true,
+        "chantierGlobal": "Travaux carrelage suite fuite (8460€)"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement TE galva avec 3 raccords GEBO",
+    "categorie": "Plomberie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 0,
+    "prixUnitaire": 0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "Inclus dans BDC LOG/E34601 - intervention urgence facturée à part 462,40€",
+    "devisSource": "DEV26-11567",
+    "isChantier": true,
+    "chantierGlobal": "Travaux complémentaires BDC LOG/E34601 - FAC HABITAT 462,40€",
+    "historiquePrix": [
+      {
+        "prixHT": 0,
+        "prixUnitaire": 0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "Inclus dans BDC LOG/E34601 - intervention urgence facturée à part 462,40€",
+        "devisSource": "DEV26-11567",
+        "isChantier": true,
+        "chantierGlobal": "Travaux complémentaires BDC LOG/E34601 - FAC HABITAT 462,40€"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement colonne EU avec piquage",
+    "categorie": "Plomberie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 696,
+    "prixUnitaire": 696,
+    "unite": "ml",
+    "metrageRef": "~1.2 m",
+    "note": "Colonne ~1.2m avec piquage",
+    "devisSource": "DEV26-11431",
+    "isChantier": true,
+    "chantierGlobal": "Travaux colonne EU avec remplacement",
+    "historiquePrix": [
+      {
+        "prixHT": 696,
+        "prixUnitaire": 696,
+        "unite": "ml",
+        "metrageRef": "~1.2 m",
+        "note": "Colonne ~1.2m avec piquage",
+        "devisSource": "DEV26-11431",
+        "isChantier": true,
+        "chantierGlobal": "Travaux colonne EU avec remplacement"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement raccord fuyard encastré",
+    "categorie": "Plomberie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 300.0,
+    "prixUnitaire": 300.0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11338",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 300.0,
+        "prixUnitaire": 300.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11338",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement tube multicouche EF",
+    "categorie": "Plomberie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 1644.0,
+    "prixUnitaire": 96.71,
+    "unite": "ml",
+    "metrageRef": "17 ML",
+    "note": "Forfait 17ML incluant 6 coudes + 1 raccord libre + 3/4 femelle libre + 1 coude raccord. Unitaire ~97€HT/ml tout compris",
+    "devisSource": "DEV26-11453",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 1644.0,
+        "prixUnitaire": 96.71,
+        "unite": "ml",
+        "metrageRef": "17 ML",
+        "note": "Forfait 17ML incluant 6 coudes + 1 raccord libre + 3/4 femelle libre + 1 coude raccord. Unitaire ~97€HT/ml tout compris",
+        "devisSource": "DEV26-11453",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement tuyauterie et raccordement",
+    "categorie": "Plomberie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 300,
+    "prixUnitaire": 300,
+    "unite": "ml",
+    "metrageRef": "1 ml",
+    "note": "Tuyauterie VRD",
+    "devisSource": "DEV26-11482",
+    "isChantier": true,
+    "chantierGlobal": "Remplacement tronçon VRD 17ml profondeur 1.5m",
+    "historiquePrix": [
+      {
+        "prixHT": 300,
+        "prixUnitaire": 300,
+        "unite": "ml",
+        "metrageRef": "1 ml",
+        "note": "Tuyauterie VRD",
+        "devisSource": "DEV26-11482",
+        "isChantier": true,
+        "chantierGlobal": "Remplacement tronçon VRD 17ml profondeur 1.5m"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement verrou RAIN BIRD",
+    "categorie": "Plomberie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 432.0,
+    "prixUnitaire": 432.0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11338",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 432.0,
+        "prixUnitaire": 432.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11338",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Reprise scellement et raccordement avec conservation regard existant",
+    "categorie": "Plomberie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 230,
+    "prixUnitaire": 230,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "Par regard",
+    "devisSource": "DEV26-11482",
+    "isChantier": true,
+    "chantierGlobal": "Remplacement tronçon VRD 17ml profondeur 1.5m",
+    "historiquePrix": [
+      {
+        "prixHT": 230,
+        "prixUnitaire": 230,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "Par regard",
+        "devisSource": "DEV26-11482",
+        "isChantier": true,
+        "chantierGlobal": "Remplacement tronçon VRD 17ml profondeur 1.5m"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait diagnostic de panne réseau ECS",
+    "categorie": "Plomberie chauffage",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 180.0,
+    "prixUnitaire": 180.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Diagnostic spécifique réseau ECS",
+    "devisSource": "DEV26-12379",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 180.0,
+        "prixUnitaire": 180.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Diagnostic spécifique réseau ECS",
+        "devisSource": "DEV26-12379",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait déplacement groupe extérieur PAC toiture vers support sol",
+    "categorie": "Plomberie chauffage",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 780,
+    "prixUnitaire": 780,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Déplacement groupe extérieur PAC",
+    "devisSource": "DEV26-11263",
+    "isChantier": true,
+    "chantierGlobal": "Travaux complets PAC (4414€)",
+    "historiquePrix": [
+      {
+        "prixHT": 780,
+        "prixUnitaire": 780,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Déplacement groupe extérieur PAC",
+        "devisSource": "DEV26-11263",
+        "isChantier": true,
+        "chantierGlobal": "Travaux complets PAC (4414€)"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait désembouage du réseau chauffage",
+    "categorie": "Plomberie chauffage",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 680.0,
+    "prixUnitaire": 680.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Inclut introduction XP100 anti-boues + purge + remise en route",
+    "devisSource": "DEV26-11262",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 680.0,
+        "prixUnitaire": 680.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Inclut introduction XP100 anti-boues + purge + remise en route",
+        "devisSource": "DEV26-11262",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait fourniture et rallonge liaison sous goulotte en toiture avec carottage",
+    "categorie": "Plomberie chauffage",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 1248,
+    "prixUnitaire": 1248,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Liaison sous goulotte avec carottage",
+    "devisSource": "DEV26-11263",
+    "isChantier": true,
+    "chantierGlobal": "Travaux complets PAC (4414€)",
+    "historiquePrix": [
+      {
+        "prixHT": 1248,
+        "prixUnitaire": 1248,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Liaison sous goulotte avec carottage",
+        "devisSource": "DEV26-11263",
+        "isChantier": true,
+        "chantierGlobal": "Travaux complets PAC (4414€)"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait purge et remise en service chauffage",
+    "categorie": "Plomberie chauffage",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 110.0,
+    "prixUnitaire": 110.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11504",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 110.0,
+        "prixUnitaire": 110.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11504",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait purge installation radiateurs",
+    "categorie": "Plomberie chauffage",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 138.0,
+    "prixUnitaire": 138.0,
+    "unite": "forfait",
+    "metrageRef": "4 radiateurs",
+    "note": "Forfait purge installation chauffage",
+    "devisSource": "DEV26-11104",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 138.0,
+        "prixUnitaire": 138.0,
+        "unite": "forfait",
+        "metrageRef": "4 radiateurs",
+        "note": "Forfait purge installation chauffage",
+        "devisSource": "DEV26-11104",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait remise en service installation PAC",
+    "categorie": "Plomberie chauffage",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 336,
+    "prixUnitaire": 336,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11263",
+    "isChantier": true,
+    "chantierGlobal": "Travaux complets PAC (4414€)",
+    "historiquePrix": [
+      {
+        "prixHT": 336,
+        "prixUnitaire": 336,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11263",
+        "isChantier": true,
+        "chantierGlobal": "Travaux complets PAC (4414€)"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait remplissage purge réseau chauffage",
+    "categorie": "Plomberie chauffage",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 138.0,
+    "prixUnitaire": 138.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11104",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 138.0,
+        "prixUnitaire": 138.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11104",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait reprise des fixations radiateur",
+    "categorie": "Plomberie chauffage",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 180.0,
+    "prixUnitaire": 180.0,
+    "unite": "unité",
+    "metrageRef": "par radiateur",
+    "note": "Prix par radiateur",
+    "devisSource": "DEV26-11504",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 180.0,
+        "prixUnitaire": 180.0,
+        "unite": "unité",
+        "metrageRef": "par radiateur",
+        "note": "Prix par radiateur",
+        "devisSource": "DEV26-11504",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait récupération gaz",
+    "categorie": "Plomberie chauffage",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 420,
+    "prixUnitaire": 420,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Récupération gaz frigorigène avant intervention PAC",
+    "devisSource": "DEV26-11263",
+    "isChantier": true,
+    "chantierGlobal": "Travaux complets PAC (4414€)",
+    "historiquePrix": [
+      {
+        "prixHT": 420,
+        "prixUnitaire": 420,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Récupération gaz frigorigène avant intervention PAC",
+        "devisSource": "DEV26-11263",
+        "isChantier": true,
+        "chantierGlobal": "Travaux complets PAC (4414€)"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait vidange du réseau chauffage",
+    "categorie": "Plomberie chauffage",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 110.0,
+    "prixUnitaire": 110.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11504",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 110.0,
+        "prixUnitaire": 110.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11504",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement clapet anti-pollution ECS",
+    "categorie": "Plomberie chauffage",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 264.0,
+    "prixUnitaire": 264.0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-12379",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 264.0,
+        "prixUnitaire": 264.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-12379",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement purgeur",
+    "categorie": "Plomberie chauffage",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 156.0,
+    "prixUnitaire": 156.0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "Purgeur séjour",
+    "devisSource": "DEV26-11104",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 156.0,
+        "prixUnitaire": 156.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "Purgeur séjour",
+        "devisSource": "DEV26-11104",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement tuyauterie PER 20 par multicouche 32 entre PAC et clarinette",
+    "categorie": "Plomberie chauffage",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 1560,
+    "prixUnitaire": 1560,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Migration tuyauterie PAC",
+    "devisSource": "DEV26-11263",
+    "isChantier": true,
+    "chantierGlobal": "Travaux complets PAC (4414€)",
+    "historiquePrix": [
+      {
+        "prixHT": 1560,
+        "prixUnitaire": 1560,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Migration tuyauterie PAC",
+        "devisSource": "DEV26-11263",
+        "isChantier": true,
+        "chantierGlobal": "Travaux complets PAC (4414€)"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement vanne 2 voies + tête thermostatique",
+    "categorie": "Plomberie chauffage",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 850.0,
+    "prixUnitaire": 850.0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11645",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 850.0,
+        "prixUnitaire": 850.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11645",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Dépose et repose WC",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 198.0,
+    "prixUnitaire": 198.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11532",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 198.0,
+        "prixUnitaire": 198.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11532",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Dépose et évacuation baignoire",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 200.0,
+    "prixUnitaire": 200.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Dépose baignoire SEULE (sans tablier)",
+    "devisSource": "DEV26-11571",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 200.0,
+        "prixUnitaire": 200.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Dépose baignoire SEULE (sans tablier)",
+        "devisSource": "DEV26-11571",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Dépose et évacuation baignoire et tablier",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 340.0,
+    "prixUnitaire": 340.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Combo dépose baignoire + tablier",
+    "devisSource": "DEV26-11415",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 340.0,
+        "prixUnitaire": 340.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Combo dépose baignoire + tablier",
+        "devisSource": "DEV26-11415",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait dépose 1ère rangée faïence",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 0,
+    "prixUnitaire": 0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Inclus dans forfait global remplacement bac à douche",
+    "devisSource": "DEV26-11698",
+    "isChantier": true,
+    "chantierGlobal": "Remplacement bac à douche complet 2400€HT",
+    "historiquePrix": [
+      {
+        "prixHT": 0,
+        "prixUnitaire": 0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Inclus dans forfait global remplacement bac à douche",
+        "devisSource": "DEV26-11698",
+        "isChantier": true,
+        "chantierGlobal": "Remplacement bac à douche complet 2400€HT"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait dépose et repose mitigeur",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 156.0,
+    "prixUnitaire": 156.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11125",
+    "isChantier": true,
+    "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)",
+    "historiquePrix": [
+      {
+        "prixHT": 156.0,
+        "prixUnitaire": 156.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11125",
+        "isChantier": true,
+        "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait dépose et repose mobilier lavabo",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 300.0,
+    "prixUnitaire": 300.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11571",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 300.0,
+        "prixUnitaire": 300.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11571",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait dépose et repose paroi de douche",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 300.0,
+    "prixUnitaire": 300.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Sous réserve de l'état de la cabine lors de la dépose",
+    "devisSource": "DEV26-11531",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 300.0,
+        "prixUnitaire": 300.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Sous réserve de l'état de la cabine lors de la dépose",
+        "devisSource": "DEV26-11531",
+        "isChantier": false,
+        "chantierGlobal": ""
+      },
+      {
+        "prixHT": 0,
+        "prixUnitaire": 0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Inclus dans forfait global remplacement bac à douche",
+        "devisSource": "DEV26-11698",
+        "isChantier": true,
+        "chantierGlobal": "Remplacement bac à douche complet 2400€HT"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait dépose et évacuation bac à douche",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 0,
+    "prixUnitaire": 0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Inclus dans forfait global",
+    "devisSource": "DEV26-11698",
+    "isChantier": true,
+    "chantierGlobal": "Remplacement bac à douche complet 2400€HT",
+    "historiquePrix": [
+      {
+        "prixHT": 0,
+        "prixUnitaire": 0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Inclus dans forfait global",
+        "devisSource": "DEV26-11698",
+        "isChantier": true,
+        "chantierGlobal": "Remplacement bac à douche complet 2400€HT"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait dépose et évacuation bac à douche 120x90",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 192.0,
+    "prixUnitaire": 192.0,
+    "unite": "unité",
+    "metrageRef": "120x90 cm",
+    "note": "",
+    "devisSource": "DEV26-11125",
+    "isChantier": true,
+    "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)",
+    "historiquePrix": [
+      {
+        "prixHT": 192.0,
+        "prixUnitaire": 192.0,
+        "unite": "unité",
+        "metrageRef": "120x90 cm",
+        "note": "",
+        "devisSource": "DEV26-11125",
+        "isChantier": true,
+        "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait dépose et évacuation paroi de douche",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 84.0,
+    "prixUnitaire": 84.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Plus économique que dépose + repose",
+    "devisSource": "DEV26-11125",
+    "isChantier": true,
+    "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)",
+    "historiquePrix": [
+      {
+        "prixHT": 84.0,
+        "prixUnitaire": 84.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Plus économique que dépose + repose",
+        "devisSource": "DEV26-11125",
+        "isChantier": true,
+        "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait dépose et évacuation tablier carreler",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 216.0,
+    "prixUnitaire": 216.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11151",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 216.0,
+        "prixUnitaire": 216.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11151",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait fourniture et remplacement mécanisme de chasse WC",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 130.0,
+    "prixUnitaire": 130.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11335",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 130.0,
+        "prixUnitaire": 130.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11335",
+        "isChantier": false,
+        "chantierGlobal": ""
+      },
+      {
+        "prixHT": 130.0,
+        "prixUnitaire": 130,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Contreras - identique au prix existant",
+        "devisSource": "DEV26-12437",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et application joint faïence",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 336.0,
+    "prixUnitaire": 336.0,
+    "unite": "forfait",
+    "metrageRef": "1 ligne verticale + 1 horizontale",
+    "note": "Joint faïence beige côté mitigeur",
+    "devisSource": "DEV26-12437",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 336.0,
+        "prixUnitaire": 336.0,
+        "unite": "forfait",
+        "metrageRef": "1 ligne verticale + 1 horizontale",
+        "note": "Joint faïence beige côté mitigeur",
+        "devisSource": "DEV26-12437",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et application joint silicone (blanc supérieur + translucide inférieur)",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 144.0,
+    "prixUnitaire": 144.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Joint silicone partie sup. plinthe blanc + partie inf. translucide",
+    "devisSource": "DEV26-12437",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 144.0,
+        "prixUnitaire": 144.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Joint silicone partie sup. plinthe blanc + partie inf. translucide",
+        "devisSource": "DEV26-12437",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et application joint silicone sanitaire blanc pourtour bac douche",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 132.0,
+    "prixUnitaire": 132.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11125",
+    "isChantier": true,
+    "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)",
+    "historiquePrix": [
+      {
+        "prixHT": 132.0,
+        "prixUnitaire": 132.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11125",
+        "isChantier": true,
+        "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et application silicone sanitaire pourtour baignoire",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 195.0,
+    "prixUnitaire": 195.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Silicone sanitaire (qualité spécifique)",
+    "devisSource": "DEV26-11492",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 195.0,
+        "prixUnitaire": 195.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Silicone sanitaire (qualité spécifique)",
+        "devisSource": "DEV26-11492",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et application silicone sanitaire pourtour vasque",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 195.0,
+    "prixUnitaire": 195.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11492",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 195.0,
+        "prixUnitaire": 195.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11492",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et modification écoulement avec réparation",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 280.0,
+    "prixUnitaire": 280.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11415",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 280.0,
+        "prixUnitaire": 280.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11415",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose 1ère ligne faïence pourtour bac douche",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 1776.0,
+    "prixUnitaire": 1776.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "1ère ligne faïence",
+    "devisSource": "DEV26-11125",
+    "isChantier": true,
+    "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)",
+    "historiquePrix": [
+      {
+        "prixHT": 1776.0,
+        "prixUnitaire": 1776.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "1ère ligne faïence",
+        "devisSource": "DEV26-11125",
+        "isChantier": true,
+        "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose 1ère rangée faïence pourtour bac douche",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 0,
+    "prixUnitaire": 0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Inclus dans forfait global",
+    "devisSource": "DEV26-11698",
+    "isChantier": true,
+    "chantierGlobal": "Remplacement bac à douche complet 2400€HT",
+    "historiquePrix": [
+      {
+        "prixHT": 0,
+        "prixUnitaire": 0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Inclus dans forfait global",
+        "devisSource": "DEV26-11698",
+        "isChantier": true,
+        "chantierGlobal": "Remplacement bac à douche complet 2400€HT"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose bac à douche 120x90",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 1068.0,
+    "prixUnitaire": 1068.0,
+    "unite": "unité",
+    "metrageRef": "120x90 cm",
+    "note": "Bac standard (différent extra-plat)",
+    "devisSource": "DEV26-11125",
+    "isChantier": true,
+    "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)",
+    "historiquePrix": [
+      {
+        "prixHT": 1068.0,
+        "prixUnitaire": 1068.0,
+        "unite": "unité",
+        "metrageRef": "120x90 cm",
+        "note": "Bac standard (différent extra-plat)",
+        "devisSource": "DEV26-11125",
+        "isChantier": true,
+        "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose bac à douche extra-plat 120x90",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 0,
+    "prixUnitaire": 0,
+    "unite": "unité",
+    "metrageRef": "120x90 cm",
+    "note": "Inclus dans forfait global",
+    "devisSource": "DEV26-11698",
+    "isChantier": true,
+    "chantierGlobal": "Remplacement bac à douche complet 2400€HT",
+    "historiquePrix": [
+      {
+        "prixHT": 0,
+        "prixUnitaire": 0,
+        "unite": "unité",
+        "metrageRef": "120x90 cm",
+        "note": "Inclus dans forfait global",
+        "devisSource": "DEV26-11698",
+        "isChantier": true,
+        "chantierGlobal": "Remplacement bac à douche complet 2400€HT"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose baignoire acier",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 660.0,
+    "prixUnitaire": 660.0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "Taille non précisée - prix le plus cher retenu",
+    "devisSource": "DEV26-11151",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 660.0,
+        "prixUnitaire": 660.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "Taille non précisée - prix le plus cher retenu",
+        "devisSource": "DEV26-11151",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose baignoire acier 170 cm",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 580.0,
+    "prixUnitaire": 580.0,
+    "unite": "unité",
+    "metrageRef": "170 cm",
+    "note": "Modèle 170 cm spécifié",
+    "devisSource": "DEV26-11571",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 580.0,
+        "prixUnitaire": 580.0,
+        "unite": "unité",
+        "metrageRef": "170 cm",
+        "note": "Modèle 170 cm spécifié",
+        "devisSource": "DEV26-11571",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose barre de maintien extrémité paroi",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 216.0,
+    "prixUnitaire": 216.0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11694",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 216.0,
+        "prixUnitaire": 216.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11694",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose joint silicone pourtour bac à douche",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 160.0,
+    "prixUnitaire": 160.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11853",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 160.0,
+        "prixUnitaire": 160.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11853",
+        "isChantier": false,
+        "chantierGlobal": ""
+      },
+      {
+        "prixHT": 132.0,
+        "prixUnitaire": 132,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Contreras - moins cher que ligne existante (160€)",
+        "devisSource": "DEV26-12437",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose margelle siporex à carreler 8cm",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 540.0,
+    "prixUnitaire": 540.0,
+    "unite": "unité",
+    "metrageRef": "épaisseur 8cm",
+    "note": "Margelle SIPOREX (à carreler ensuite)",
+    "devisSource": "DEV26-11571",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 540.0,
+        "prixUnitaire": 540.0,
+        "unite": "unité",
+        "metrageRef": "épaisseur 8cm",
+        "note": "Margelle SIPOREX (à carreler ensuite)",
+        "devisSource": "DEV26-11571",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose mitigeur baignoire",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 240.0,
+    "prixUnitaire": 240.0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "Mitigeur (différent de la robinetterie classique)",
+    "devisSource": "DEV26-11415",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 240.0,
+        "prixUnitaire": 240.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "Mitigeur (différent de la robinetterie classique)",
+        "devisSource": "DEV26-11415",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose porte de douche L90",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 708.0,
+    "prixUnitaire": 708.0,
+    "unite": "unité",
+    "metrageRef": "L90",
+    "note": "",
+    "devisSource": "DEV26-12437",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 708.0,
+        "prixUnitaire": 708.0,
+        "unite": "unité",
+        "metrageRef": "L90",
+        "note": "",
+        "devisSource": "DEV26-12437",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose robinet vasque",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 190.0,
+    "prixUnitaire": 190.0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11492",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 190.0,
+        "prixUnitaire": 190.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11492",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose robinetterie bain/douche",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 264.0,
+    "prixUnitaire": 264.0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "Robinetterie bain/douche - prix le plus cher retenu",
+    "devisSource": "DEV26-11151",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 264.0,
+        "prixUnitaire": 264.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "Robinetterie bain/douche - prix le plus cher retenu",
+        "devisSource": "DEV26-11151",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose tablier PVC",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 280.0,
+    "prixUnitaire": 280.0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "Prix retenu : le plus cher (280€ vs 260€ vs 228€)",
+    "devisSource": "DEV26-11415",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 280.0,
+        "prixUnitaire": 280.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "Prix retenu : le plus cher (280€ vs 260€ vs 228€)",
+        "devisSource": "DEV26-11415",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement bac à douche 80x80",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 810.0,
+    "prixUnitaire": 810.0,
+    "unite": "unité",
+    "metrageRef": "80x80 cm",
+    "note": "",
+    "devisSource": "DEV26-11531",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 810.0,
+        "prixUnitaire": 810.0,
+        "unite": "unité",
+        "metrageRef": "80x80 cm",
+        "note": "",
+        "devisSource": "DEV26-11531",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement flexible alimentation ECS baignoire",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 130.0,
+    "prixUnitaire": 130,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11890",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 130.0,
+        "prixUnitaire": 130,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11890",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement joint silicone baignoire",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 145.0,
+    "prixUnitaire": 145.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Joint silicone baignoire (différent du bac à douche)",
+    "devisSource": "DEV26-11539",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 145.0,
+        "prixUnitaire": 145.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Joint silicone baignoire (différent du bac à douche)",
+        "devisSource": "DEV26-11539",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement meuble sous-vasque 100x60cm",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 540.0,
+    "prixUnitaire": 540.0,
+    "unite": "unité",
+    "metrageRef": "L100 x H60 cm",
+    "note": "",
+    "devisSource": "DEV26-11718",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 540.0,
+        "prixUnitaire": 540.0,
+        "unite": "unité",
+        "metrageRef": "L100 x H60 cm",
+        "note": "",
+        "devisSource": "DEV26-11718",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement réseau ECS du compteur à la baignoire",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 1640.0,
+    "prixUnitaire": 1640,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Remplacement réseau ECS complet (compteur -> baignoire)",
+    "devisSource": "DEV26-11890",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 1640.0,
+        "prixUnitaire": 1640,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Remplacement réseau ECS complet (compteur -> baignoire)",
+        "devisSource": "DEV26-11890",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement siphon",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 180.0,
+    "prixUnitaire": 180.0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "Siphon cassé",
+    "devisSource": "DEV26-11528",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 180.0,
+        "prixUnitaire": 180.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "Siphon cassé",
+        "devisSource": "DEV26-11528",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et repose margelle carrelée blanche",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 390.0,
+    "prixUnitaire": 390.0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "Margelle déjà carrelée (différent du siporex)",
+    "devisSource": "DEV26-11415",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 390.0,
+        "prixUnitaire": 390.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "Margelle déjà carrelée (différent du siporex)",
+        "devisSource": "DEV26-11415",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Modification tuyauterie pour déplacement robinet sur baignoire",
+    "categorie": "Plomberie sanitaire",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 380.0,
+    "prixUnitaire": 380.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11571",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 380.0,
+        "prixUnitaire": 380.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11571",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait recherche de fuite",
+    "categorie": "Recherche de fuite",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 200.0,
+    "prixUnitaire": 200.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Recherche de fuite normale (sans rapport)",
+    "devisSource": "DEV26-11414",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 200.0,
+        "prixUnitaire": 200.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Recherche de fuite normale (sans rapport)",
+        "devisSource": "DEV26-11414",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait recherche de fuite avec transmission rapport",
+    "categorie": "Recherche de fuite",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 450.0,
+    "prixUnitaire": 450.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Recherche de fuite standard avec rapport transmis",
+    "devisSource": "DEV26-11853",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 450.0,
+        "prixUnitaire": 450.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Recherche de fuite standard avec rapport transmis",
+        "devisSource": "DEV26-11853",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait recherche de fuite en toiture",
+    "categorie": "Recherche de fuite",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 450.0,
+    "prixUnitaire": 450.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Recherche de fuite spécifique toiture",
+    "devisSource": "DEV26-11853",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 450.0,
+        "prixUnitaire": 450.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Recherche de fuite spécifique toiture",
+        "devisSource": "DEV26-11853",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait recherche de fuite fumigène avec réparations",
+    "categorie": "Recherche de fuite",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 1180.0,
+    "prixUnitaire": 1180.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Recherche fuite fumigène + reprise étanchéité skydom + 2 jonctions acrotère",
+    "devisSource": "DEV26-12139",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 1180.0,
+        "prixUnitaire": 1180.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Recherche fuite fumigène + reprise étanchéité skydom + 2 jonctions acrotère",
+        "devisSource": "DEV26-12139",
+        "isChantier": false,
+        "chantierGlobal": ""
+      },
+      {
+        "prixHT": 1180.0,
+        "prixUnitaire": 1180,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Via Bianca - réparations non détaillées",
+        "devisSource": "DEV26-11981",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait dépose et évacuation encombrants",
+    "categorie": "Serrurerie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 390.0,
+    "prixUnitaire": 390.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Local fermé - évacuation encombrants",
+    "devisSource": "DEV26-11162",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 390.0,
+        "prixUnitaire": 390.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Local fermé - évacuation encombrants",
+        "devisSource": "DEV26-11162",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait ouverture porte dans local",
+    "categorie": "Serrurerie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 180.0,
+    "prixUnitaire": 180.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11713",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 180.0,
+        "prixUnitaire": 180.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11713",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait ouverture stop parking",
+    "categorie": "Serrurerie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 140.0,
+    "prixUnitaire": 140.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11133",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 140.0,
+        "prixUnitaire": 140.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11133",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait réparation poignée",
+    "categorie": "Serrurerie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 70.0,
+    "prixUnitaire": 70.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11133",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 70.0,
+        "prixUnitaire": 70.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11133",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose cylindre 30/30",
+    "categorie": "Serrurerie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 150.0,
+    "prixUnitaire": 150.0,
+    "unite": "unité",
+    "metrageRef": "30/30",
+    "note": "",
+    "devisSource": "DEV26-11713",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 150.0,
+        "prixUnitaire": 150.0,
+        "unite": "unité",
+        "metrageRef": "30/30",
+        "note": "",
+        "devisSource": "DEV26-11713",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose plaque de propreté",
+    "categorie": "Serrurerie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 70.0,
+    "prixUnitaire": 70.0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "Plaque de propreté porte",
+    "devisSource": "DEV26-12298",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 70.0,
+        "prixUnitaire": 70.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "Plaque de propreté porte",
+        "devisSource": "DEV26-12298",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose verrou à cylindre Y7 mg7",
+    "categorie": "Serrurerie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 150.0,
+    "prixUnitaire": 150.0,
+    "unite": "unité",
+    "metrageRef": "Y7 mg7",
+    "note": "",
+    "devisSource": "DEV26-11162",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 150.0,
+        "prixUnitaire": 150.0,
+        "unite": "unité",
+        "metrageRef": "Y7 mg7",
+        "note": "",
+        "devisSource": "DEV26-11162",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement bricard A2P",
+    "categorie": "Serrurerie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 350.0,
+    "prixUnitaire": 350.0,
+    "unite": "unité",
+    "metrageRef": "A2P",
+    "note": "",
+    "devisSource": "DEV26-11133",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 350.0,
+        "prixUnitaire": 350.0,
+        "unite": "unité",
+        "metrageRef": "A2P",
+        "note": "",
+        "devisSource": "DEV26-11133",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement coffre à larder A40",
+    "categorie": "Serrurerie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 130.0,
+    "prixUnitaire": 130.0,
+    "unite": "unité",
+    "metrageRef": "A40",
+    "note": "",
+    "devisSource": "DEV26-11713",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 130.0,
+        "prixUnitaire": 130.0,
+        "unite": "unité",
+        "metrageRef": "A40",
+        "note": "",
+        "devisSource": "DEV26-11713",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement cylindre 10/30",
+    "categorie": "Serrurerie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 130.0,
+    "prixUnitaire": 130.0,
+    "unite": "unité",
+    "metrageRef": "10/30",
+    "note": "",
+    "devisSource": "DEV26-11133",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 130.0,
+        "prixUnitaire": 130.0,
+        "unite": "unité",
+        "metrageRef": "10/30",
+        "note": "",
+        "devisSource": "DEV26-11133",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement cylindre 30/30 Y7 mg7",
+    "categorie": "Serrurerie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 150.0,
+    "prixUnitaire": 150.0,
+    "unite": "unité",
+    "metrageRef": "30/30 Y7 mg7",
+    "note": "",
+    "devisSource": "DEV26-11162",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 150.0,
+        "prixUnitaire": 150.0,
+        "unite": "unité",
+        "metrageRef": "30/30 Y7 mg7",
+        "note": "",
+        "devisSource": "DEV26-11162",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement cylindre 40/50 Y7",
+    "categorie": "Serrurerie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 170.0,
+    "prixUnitaire": 170.0,
+    "unite": "unité",
+    "metrageRef": "40/50 Y7",
+    "note": "",
+    "devisSource": "DEV26-11713",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 170.0,
+        "prixUnitaire": 170.0,
+        "unite": "unité",
+        "metrageRef": "40/50 Y7",
+        "note": "",
+        "devisSource": "DEV26-11713",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement poignée HIONNA",
+    "categorie": "Serrurerie",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 135.0,
+    "prixUnitaire": 135.0,
+    "unite": "unité",
+    "metrageRef": "modèle HIONNA",
+    "note": "",
+    "devisSource": "DEV26-11713",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 135.0,
+        "prixUnitaire": 135.0,
+        "unite": "unité",
+        "metrageRef": "modèle HIONNA",
+        "note": "",
+        "devisSource": "DEV26-11713",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
   },
   {
     "designation": "Forfait condamnation prise électrique",
     "categorie": "Électricité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
     "prixHT": 156.0,
-    "unite": "forfait",
     "prixUnitaire": 78.0,
-    "uniteRef": "prise",
+    "unite": "forfait",
     "metrageRef": "2 prises",
-    "note": "Prix forfait pour 2 prises ; unitaire 78€HT/prise",
-    "devisSource": "DEV26-11694"
+    "note": "Prix forfait 2 prises ; unitaire 78€HT/prise",
+    "devisSource": "DEV26-11694",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 156.0,
+        "prixUnitaire": 78.0,
+        "unite": "forfait",
+        "metrageRef": "2 prises",
+        "note": "Prix forfait 2 prises ; unitaire 78€HT/prise",
+        "devisSource": "DEV26-11694",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
   },
   {
     "designation": "Forfait création bloc 3 prises avec goulotte",
     "categorie": "Électricité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
     "prixHT": 384.0,
-    "unite": "forfait",
     "prixUnitaire": 54.86,
-    "uniteRef": "ml goulotte",
+    "unite": "forfait",
     "metrageRef": "7 ML goulotte",
-    "note": "Prix forfait pour bloc 3 prises + 7ML goulotte ; unitaire ~55€HT/ml goulotte",
-    "devisSource": "DEV26-11694"
+    "note": "Forfait bloc 3 prises + 7ML goulotte ; unitaire ~55€HT/ml goulotte",
+    "devisSource": "DEV26-11694",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 384.0,
+        "prixUnitaire": 54.86,
+        "unite": "forfait",
+        "metrageRef": "7 ML goulotte",
+        "note": "Forfait bloc 3 prises + 7ML goulotte ; unitaire ~55€HT/ml goulotte",
+        "devisSource": "DEV26-11694",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait diagnostic de panne et réparation chauffage électrique",
+    "categorie": "Électricité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 180.0,
+    "prixUnitaire": 180.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Chauffage électrique (modèle ATLANTIS) - modification câblage et vérif",
+    "devisSource": "DEV26-11375",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 180.0,
+        "prixUnitaire": 180.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Chauffage électrique (modèle ATLANTIS) - modification câblage et vérif",
+        "devisSource": "DEV26-11375",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
   },
   {
     "designation": "Forfait découpe placo + pose 3 spots IP65",
     "categorie": "Électricité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
     "prixHT": 468.0,
-    "unite": "forfait",
     "prixUnitaire": 156.0,
-    "uniteRef": "spot",
+    "unite": "forfait",
     "metrageRef": "3 spots + ouverture 30x30",
-    "note": "Prix forfait pour 3 spots ; unitaire 156€HT/spot",
-    "devisSource": "DEV26-11694"
+    "note": "Forfait pour 3 spots ; unitaire 156€HT/spot",
+    "devisSource": "DEV26-11694",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 468.0,
+        "prixUnitaire": 156.0,
+        "unite": "forfait",
+        "metrageRef": "3 spots + ouverture 30x30",
+        "note": "Forfait pour 3 spots ; unitaire 156€HT/spot",
+        "devisSource": "DEV26-11694",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
   },
   {
-    "designation": "[CHANTIER] Remplacement bac à douche complet",
-    "categorie": "Chantier",
-    "prixHT": 2400.0,
-    "unite": "chantier",
-    "prixUnitaire": 2400.0,
-    "uniteRef": "chantier",
-    "metrageRef": null,
-    "note": "Forfait global incluant : dépose/repose paroi douche, dépose 1ère rangée faïence, dépose bac, fourniture+pose bac extra-plat 120x90, pose 1ère rangée faïence",
-    "devisSource": "DEV26-11698"
-  },
-  {
-    "designation": "[CHANTIER] Remplacement tronçon VRD profondeur 1,5m",
-    "categorie": "Chantier",
-    "prixHT": 35840.0,
-    "unite": "chantier",
-    "prixUnitaire": 2108.24,
-    "uniteRef": "ml tranchée",
-    "metrageRef": "17 ml de tranchée",
-    "note": "Chantier complet bât E1+E2 incluant : barrières HERAS, pompe (21j), camion pompage, blindage 6u, tranchée+évac 17ml, tuyauterie 17ml, rebouchage 17ml. Unitaire ~2108€HT/ml tranchée tout compris",
-    "devisSource": "DEV26-11482"
-  },
-  {
-    "designation": "[CHANTIER] Étanchéité calendrite avec remontée verticale",
-    "categorie": "Chantier",
-    "prixHT": 1440.0,
-    "unite": "chantier",
-    "prixUnitaire": 1440.0,
-    "uniteRef": "intervention",
-    "metrageRef": null,
-    "note": "Spécifique terrasse - métrage non communiqué dans devis",
-    "devisSource": "DEV26-11940"
-  },
-  {
-    "designation": "[CHANTIER] Étanchéité calendrite descente EP vers boîte à eau",
-    "categorie": "Chantier",
-    "prixHT": 360.0,
-    "unite": "chantier",
-    "prixUnitaire": 360.0,
-    "uniteRef": "intervention",
-    "metrageRef": null,
+    "designation": "Fourniture et remplacement interrupteur",
+    "categorie": "Électricité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 84.0,
+    "prixUnitaire": 84.0,
+    "unite": "unité",
+    "metrageRef": "",
     "note": "",
-    "devisSource": "DEV26-11940"
+    "devisSource": "DEV26-11224",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 84.0,
+        "prixUnitaire": 84.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11224",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
   },
   {
-    "designation": "[CHANTIER] Étanchéité souche VMC + relevés alu",
-    "categorie": "Chantier",
-    "prixHT": 945.0,
-    "unite": "chantier",
-    "prixUnitaire": 135.0,
-    "uniteRef": "ml relevé",
-    "metrageRef": "souche VMC + 7ML relevés alu",
-    "note": "Forfait souche + 7ml relevés ; unitaire ~135€HT/ml relevé",
-    "devisSource": "DEV26-11753"
+    "designation": "Création tranchée et évacuation profondeur 1,5m",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 540,
+    "prixUnitaire": 540,
+    "unite": "ml",
+    "metrageRef": "1 ml",
+    "note": "Profondeur 1,5m",
+    "devisSource": "DEV26-11482",
+    "isChantier": true,
+    "chantierGlobal": "Remplacement tronçon VRD 17ml profondeur 1.5m",
+    "historiquePrix": [
+      {
+        "prixHT": 540,
+        "prixUnitaire": 540,
+        "unite": "ml",
+        "metrageRef": "1 ml",
+        "note": "Profondeur 1,5m",
+        "devisSource": "DEV26-11482",
+        "isChantier": true,
+        "chantierGlobal": "Remplacement tronçon VRD 17ml profondeur 1.5m"
+      }
+    ]
+  },
+  {
+    "designation": "Démolition et évacuation dalle pour abaissement descente pluviale",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 660.0,
+    "prixUnitaire": 660.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-12087",
+    "isChantier": true,
+    "chantierGlobal": "Travaux étanchéité Caserne Mirabeau (6836€)",
+    "historiquePrix": [
+      {
+        "prixHT": 660.0,
+        "prixUnitaire": 660.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-12087",
+        "isChantier": true,
+        "chantierGlobal": "Travaux étanchéité Caserne Mirabeau (6836€)"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait aspiration eau stagnante & nettoyage support",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 462.0,
+    "prixUnitaire": 11.0,
+    "unite": "m²",
+    "metrageRef": "42 m²",
+    "note": "Plus cher retenu (462€/42m² = 11€/m² vs 396€ et 429€)",
+    "devisSource": "DEV26-11492",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 462.0,
+        "prixUnitaire": 11.0,
+        "unite": "m²",
+        "metrageRef": "42 m²",
+        "note": "Plus cher retenu (462€/42m² = 11€/m² vs 396€ et 429€)",
+        "devisSource": "DEV26-11492",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait camion de pompage",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 1480,
+    "prixUnitaire": 1480,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Mise à disposition camion pompage",
+    "devisSource": "DEV26-11482",
+    "isChantier": true,
+    "chantierGlobal": "Remplacement tronçon VRD 17ml profondeur 1.5m",
+    "historiquePrix": [
+      {
+        "prixHT": 1480,
+        "prixUnitaire": 1480,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Mise à disposition camion pompage",
+        "devisSource": "DEV26-11482",
+        "isChantier": true,
+        "chantierGlobal": "Remplacement tronçon VRD 17ml profondeur 1.5m"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait carottage diam 80 acrotère",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 420.0,
+    "prixUnitaire": 420.0,
+    "unite": "unité",
+    "metrageRef": "diam 80",
+    "note": "",
+    "devisSource": "DEV26-12087",
+    "isChantier": true,
+    "chantierGlobal": "Travaux étanchéité Caserne Mirabeau (6836€)",
+    "historiquePrix": [
+      {
+        "prixHT": 420.0,
+        "prixUnitaire": 420.0,
+        "unite": "unité",
+        "metrageRef": "diam 80",
+        "note": "",
+        "devisSource": "DEV26-12087",
+        "isChantier": true,
+        "chantierGlobal": "Travaux étanchéité Caserne Mirabeau (6836€)"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait création chape avec reprise de pente",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 110.0,
+    "prixUnitaire": 110.0,
+    "unite": "m²",
+    "metrageRef": "1 m²",
+    "note": "Prix au m² (V2 retenue : 110€/m²)",
+    "devisSource": "DEV26-11554 v2",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 110.0,
+        "prixUnitaire": 110.0,
+        "unite": "m²",
+        "metrageRef": "1 m²",
+        "note": "Prix au m² (V2 retenue : 110€/m²)",
+        "devisSource": "DEV26-11554 v2",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait débouchage EP avec retrait mousse PU",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 540.0,
+    "prixUnitaire": 540.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11068",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 540.0,
+        "prixUnitaire": 540.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11068",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait débouchage descente EP côté jardin",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 264.0,
+    "prixUnitaire": 264.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11125",
+    "isChantier": true,
+    "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)",
+    "historiquePrix": [
+      {
+        "prixHT": 264.0,
+        "prixUnitaire": 264.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11125",
+        "isChantier": true,
+        "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait décroutage joint de dilatation",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 888.0,
+    "prixUnitaire": 148.0,
+    "unite": "ml",
+    "metrageRef": "6 ML",
+    "note": "Forfait pour 6ML ; unitaire 148€HT/ml. Plafond R+4",
+    "devisSource": "DEV26-11563",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 888.0,
+        "prixUnitaire": 148.0,
+        "unite": "ml",
+        "metrageRef": "6 ML",
+        "note": "Forfait pour 6ML ; unitaire 148€HT/ml. Plafond R+4",
+        "devisSource": "DEV26-11563",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait dépose des dalles terrasse",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 180.0,
+    "prixUnitaire": 15.0,
+    "unite": "m²",
+    "metrageRef": "12 m²",
+    "note": "Prix forfait pour 12m² ; unitaire 15€HT/m²",
+    "devisSource": "DEV26-11554",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 180.0,
+        "prixUnitaire": 15.0,
+        "unite": "m²",
+        "metrageRef": "12 m²",
+        "note": "Prix forfait pour 12m² ; unitaire 15€HT/m²",
+        "devisSource": "DEV26-11554",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait dépose et repose des dalles terrasse",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 504.0,
+    "prixUnitaire": 504.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Dépose et repose en une opération",
+    "devisSource": "DEV26-11125",
+    "isChantier": true,
+    "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)",
+    "historiquePrix": [
+      {
+        "prixHT": 504.0,
+        "prixUnitaire": 504.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Dépose et repose en une opération",
+        "devisSource": "DEV26-11125",
+        "isChantier": true,
+        "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait dépose et stockage dalles existantes",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 360.0,
+    "prixUnitaire": 360.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11940",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 360.0,
+        "prixUnitaire": 360.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11940",
+        "isChantier": false,
+        "chantierGlobal": ""
+      },
+      {
+        "prixHT": 360.0,
+        "prixUnitaire": 360,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Becker - identique au prix existant",
+        "devisSource": "DEV26-12482",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait dépose et stockage gravillons et stabilisateur",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 715.0,
+    "prixUnitaire": 17.02,
+    "unite": "m²",
+    "metrageRef": "42 m²",
+    "note": "Forfait pour 42m² ; unitaire ~17€HT/m²",
+    "devisSource": "DEV26-11492",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 715.0,
+        "prixUnitaire": 17.02,
+        "unite": "m²",
+        "metrageRef": "42 m²",
+        "note": "Forfait pour 42m² ; unitaire ~17€HT/m²",
+        "devisSource": "DEV26-11492",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait dépose gravillons et géotextile avec stockage",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 708.0,
+    "prixUnitaire": 39.33,
+    "unite": "m²",
+    "metrageRef": "18 m²",
+    "note": "Forfait pour 18m² ; unitaire ~39€HT/m²",
+    "devisSource": "DEV26-11141",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 708.0,
+        "prixUnitaire": 39.33,
+        "unite": "m²",
+        "metrageRef": "18 m²",
+        "note": "Forfait pour 18m² ; unitaire ~39€HT/m²",
+        "devisSource": "DEV26-11141",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait dépose soignée, stockage et repose moteur VMC",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 440.0,
+    "prixUnitaire": 440.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Travaux étanchéité avec démontage VMC",
+    "devisSource": "DEV26-11492",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 440.0,
+        "prixUnitaire": 440.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Travaux étanchéité avec démontage VMC",
+        "devisSource": "DEV26-11492",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait dépose étanchéité à froid sur faitage",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 156.0,
+    "prixUnitaire": 156.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-12068",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 156.0,
+        "prixUnitaire": 156.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-12068",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait dépose, stockage et repose gravillons et stabilisateur",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 660.0,
+    "prixUnitaire": 16.92,
+    "unite": "m²",
+    "metrageRef": "39 m²",
+    "note": "Forfait pour 39m² ; unitaire ~17€HT/m²",
+    "devisSource": "DEV26-11492",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 660.0,
+        "prixUnitaire": 16.92,
+        "unite": "m²",
+        "metrageRef": "39 m²",
+        "note": "Forfait pour 39m² ; unitaire ~17€HT/m²",
+        "devisSource": "DEV26-11492",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait dépose, stockage et repose terre",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 5928.0,
+    "prixUnitaire": 296.4,
+    "unite": "ml",
+    "metrageRef": "20 ml profondeur 1m (10 m²)",
+    "note": "Forfait pour 20ml profondeur 1m ; unitaire ~296€HT/ml",
+    "devisSource": "DEV26-11125",
+    "isChantier": true,
+    "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)",
+    "historiquePrix": [
+      {
+        "prixHT": 5928.0,
+        "prixUnitaire": 296.4,
+        "unite": "ml",
+        "metrageRef": "20 ml profondeur 1m (10 m²)",
+        "note": "Forfait pour 20ml profondeur 1m ; unitaire ~296€HT/ml",
+        "devisSource": "DEV26-11125",
+        "isChantier": true,
+        "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait désobstruction descente EP",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 276.0,
+    "prixUnitaire": 276.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-12482",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 276.0,
+        "prixUnitaire": 276.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-12482",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait fourniture et pose étanchéité",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 100.0,
+    "prixUnitaire": 100.0,
+    "unite": "m²",
+    "metrageRef": "1 m²",
+    "note": "Prix au m² (V2 retenue : 100€/m²)",
+    "devisSource": "DEV26-11554 v2",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 100.0,
+        "prixUnitaire": 100.0,
+        "unite": "m²",
+        "metrageRef": "1 m²",
+        "note": "Prix au m² (V2 retenue : 100€/m²)",
+        "devisSource": "DEV26-11554 v2",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait fourniture et pose étanchéité calendrite pourtour passadôme",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 720.0,
+    "prixUnitaire": 720.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11519",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 720.0,
+        "prixUnitaire": 720.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11519",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait fourniture et pose étanchéité calendrite sur faitage",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 360.0,
+    "prixUnitaire": 360.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Réparation effectuée détériorée",
+    "devisSource": "DEV26-11519",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 360.0,
+        "prixUnitaire": 360.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Réparation effectuée détériorée",
+        "devisSource": "DEV26-11519",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait fourniture et pose étanchéité calendrite sur toit terrasse",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 2160.0,
+    "prixUnitaire": 2160.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Surface non précisée dans devis source",
+    "devisSource": "DEV26-11519",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 2160.0,
+        "prixUnitaire": 2160.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Surface non précisée dans devis source",
+        "devisSource": "DEV26-11519",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait fourniture et remplacement plots",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 180.0,
+    "prixUnitaire": 15.0,
+    "unite": "m²",
+    "metrageRef": "12 m²",
+    "note": "Prix forfait pour 12m² ; unitaire 15€HT/m²",
+    "devisSource": "DEV26-11554",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 180.0,
+        "prixUnitaire": 15.0,
+        "unite": "m²",
+        "metrageRef": "12 m²",
+        "note": "Prix forfait pour 12m² ; unitaire 15€HT/m²",
+        "devisSource": "DEV26-11554",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait location nacelle",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 816.0,
+    "prixUnitaire": 816.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Pour intervention en hauteur",
+    "devisSource": "DEV26-11563",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 816.0,
+        "prixUnitaire": 816.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Pour intervention en hauteur",
+        "devisSource": "DEV26-11563",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait manutention mobilier",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 420.0,
+    "prixUnitaire": 420.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Chantier important Leveaux/Nagara",
+    "devisSource": "DEV26-11125",
+    "isChantier": true,
+    "chantierGlobal": "Travaux fuites Leveaux/Nagara - Chemin de Laval (27147€)",
+    "historiquePrix": [
+      {
+        "prixHT": 420.0,
+        "prixUnitaire": 420.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Chantier important Leveaux/Nagara",
+        "devisSource": "DEV26-11125",
+        "isChantier": true,
+        "chantierGlobal": "Travaux fuites Leveaux/Nagara - Chemin de Laval (27147€)"
+      },
+      {
+        "prixHT": 228.0,
+        "prixUnitaire": 228,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Becker - manutention standard",
+        "devisSource": "DEV26-12482",
+        "isChantier": false,
+        "chantierGlobal": ""
+      },
+      {
+        "prixHT": 216.0,
+        "prixUnitaire": 216.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11940",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait nettoyage racines et désobstruction descente EP",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 150.0,
+    "prixUnitaire": 150.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Nettoyage racines, déchets organiques + désobstruction",
+    "devisSource": "DEV26-11376",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 150.0,
+        "prixUnitaire": 150.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Nettoyage racines, déchets organiques + désobstruction",
+        "devisSource": "DEV26-11376",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait nettoyage rejingot porte fenêtre",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 228.0,
+    "prixUnitaire": 228.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-12482",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 228.0,
+        "prixUnitaire": 228.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-12482",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait nettoyage support rempli mortier et végétaux",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 1188.0,
+    "prixUnitaire": 1188.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Nettoyage lourd (support très encrassé) - différent du nettoyage standard",
+    "devisSource": "DEV26-12482",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 1188.0,
+        "prixUnitaire": 1188.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Nettoyage lourd (support très encrassé) - différent du nettoyage standard",
+        "devisSource": "DEV26-12482",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait nettoyage support étanchéité",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 432.0,
+    "prixUnitaire": 432.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Nettoyage support avant pose étanchéité (différent aspiration eau stagnante)",
+    "devisSource": "DEV26-11141",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 432.0,
+        "prixUnitaire": 432.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Nettoyage support avant pose étanchéité (différent aspiration eau stagnante)",
+        "devisSource": "DEV26-11141",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait pompage de l'eau avant travaux",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 240.0,
+    "prixUnitaire": 240.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Pompage préalable (différent location pompe à la journée)",
+    "devisSource": "DEV26-12139",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 240.0,
+        "prixUnitaire": 240.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Pompage préalable (différent location pompe à la journée)",
+        "devisSource": "DEV26-12139",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait pompe à la journée",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 300,
+    "prixUnitaire": 300,
+    "unite": "jour",
+    "metrageRef": "",
+    "note": "Pompage chantier (300€/jour)",
+    "devisSource": "DEV26-11482",
+    "isChantier": true,
+    "chantierGlobal": "Remplacement tronçon VRD 17ml profondeur 1.5m",
+    "historiquePrix": [
+      {
+        "prixHT": 300,
+        "prixUnitaire": 300,
+        "unite": "jour",
+        "metrageRef": "",
+        "note": "Pompage chantier (300€/jour)",
+        "devisSource": "DEV26-11482",
+        "isChantier": true,
+        "chantierGlobal": "Remplacement tronçon VRD 17ml profondeur 1.5m"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait prolongation évent",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 240,
+    "prixUnitaire": 240,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11415",
+    "isChantier": true,
+    "chantierGlobal": "Travaux toiture chapeau + prolongation évent (570€)",
+    "historiquePrix": [
+      {
+        "prixHT": 240,
+        "prixUnitaire": 240,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11415",
+        "isChantier": true,
+        "chantierGlobal": "Travaux toiture chapeau + prolongation évent (570€)"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait rebouchage acrotère au mortier",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 156.0,
+    "prixUnitaire": 156.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-12087",
+    "isChantier": true,
+    "chantierGlobal": "Travaux étanchéité Caserne Mirabeau (6836€)",
+    "historiquePrix": [
+      {
+        "prixHT": 156.0,
+        "prixUnitaire": 156.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-12087",
+        "isChantier": true,
+        "chantierGlobal": "Travaux étanchéité Caserne Mirabeau (6836€)"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait rebouchage sable, remblais et dalle béton",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 2220,
+    "prixUnitaire": 2220,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Rebouchage tranchée intérieure",
+    "devisSource": "DEV26-11532",
+    "isChantier": true,
+    "chantierGlobal": "Travaux carrelage suite fuite (8460€)",
+    "historiquePrix": [
+      {
+        "prixHT": 2220,
+        "prixUnitaire": 2220,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Rebouchage tranchée intérieure",
+        "devisSource": "DEV26-11532",
+        "isChantier": true,
+        "chantierGlobal": "Travaux carrelage suite fuite (8460€)"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait remise en place bac acier avec dépose clous et pose vis rondelle étanche",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 816.0,
+    "prixUnitaire": 272.0,
+    "unite": "m²",
+    "metrageRef": "3 m²",
+    "note": "Pour 3m² ; unitaire 272€HT/m²",
+    "devisSource": "DEV26-12068",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 816.0,
+        "prixUnitaire": 272.0,
+        "unite": "m²",
+        "metrageRef": "3 m²",
+        "note": "Pour 3m² ; unitaire 272€HT/m²",
+        "devisSource": "DEV26-12068",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait remplacement et modification jeu de coude façade type cordiste",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 2500.0,
+    "prixUnitaire": 2500.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Travaux type cordiste sur façade",
+    "devisSource": "DEV26-12087",
+    "isChantier": true,
+    "chantierGlobal": "Travaux étanchéité Caserne Mirabeau (6836€)",
+    "historiquePrix": [
+      {
+        "prixHT": 2500.0,
+        "prixUnitaire": 2500.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Travaux type cordiste sur façade",
+        "devisSource": "DEV26-12087",
+        "isChantier": true,
+        "chantierGlobal": "Travaux étanchéité Caserne Mirabeau (6836€)"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait repose dalles existantes avec découpe latérale",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 624.0,
+    "prixUnitaire": 624,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Becker - plus cher que ligne existante (504€)",
+    "devisSource": "DEV26-12482",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 624.0,
+        "prixUnitaire": 624,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Becker - plus cher que ligne existante (504€)",
+        "devisSource": "DEV26-12482",
+        "isChantier": false,
+        "chantierGlobal": ""
+      },
+      {
+        "prixHT": 504.0,
+        "prixUnitaire": 504.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11940",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait repose des dalles terrasse",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 300.0,
+    "prixUnitaire": 25.0,
+    "unite": "m²",
+    "metrageRef": "12 m²",
+    "note": "Prix forfait pour 12m² ; unitaire 25€HT/m²",
+    "devisSource": "DEV26-11554",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 300.0,
+        "prixUnitaire": 25.0,
+        "unite": "m²",
+        "metrageRef": "12 m²",
+        "note": "Prix forfait pour 12m² ; unitaire 25€HT/m²",
+        "devisSource": "DEV26-11554",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait reprise pente vers barbacanes avec chappe béton",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 1320.0,
+    "prixUnitaire": 1320.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Reprise pente toiture terrasse",
+    "devisSource": "DEV26-11125",
+    "isChantier": true,
+    "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)",
+    "historiquePrix": [
+      {
+        "prixHT": 1320.0,
+        "prixUnitaire": 1320.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Reprise pente toiture terrasse",
+        "devisSource": "DEV26-11125",
+        "isChantier": true,
+        "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)"
+      }
+    ]
+  },
+  {
+    "designation": "Forfait travaux type cordiste - fissure depuis boîte à eau façade",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 540.0,
+    "prixUnitaire": 540.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11940",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 540.0,
+        "prixUnitaire": 540.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11940",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait équipe cordiste",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 900.0,
+    "prixUnitaire": 900.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Travaux en hauteur type cordiste",
+    "devisSource": "DEV26-12068",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 900.0,
+        "prixUnitaire": 900.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Travaux en hauteur type cordiste",
+        "devisSource": "DEV26-12068",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait étanchéité calendrite entre toiture bac acier et remontée mur",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 1080.0,
+    "prixUnitaire": 1080.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11519",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 1080.0,
+        "prixUnitaire": 1080.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11519",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Forfait évacuation surplus de gravats",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 1320.0,
+    "prixUnitaire": 1320.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11125",
+    "isChantier": true,
+    "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)",
+    "historiquePrix": [
+      {
+        "prixHT": 1320.0,
+        "prixUnitaire": 1320.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11125",
+        "isChantier": true,
+        "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et application résine chimique sur fissures",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 456.0,
+    "prixUnitaire": 456.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Plus cher retenu (456€ vs 187€)",
+    "devisSource": "DEV26-11940",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 456.0,
+        "prixUnitaire": 456.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Plus cher retenu (456€ vs 187€)",
+        "devisSource": "DEV26-11940",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et application silicone extérieur translucide",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 324.0,
+    "prixUnitaire": 324.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Jonction couvertine & platine garde-corps. Plus cher retenu (324€ vs 308€ vs 264€)",
+    "devisSource": "DEV26-11940",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 324.0,
+        "prixUnitaire": 324.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Jonction couvertine & platine garde-corps. Plus cher retenu (324€ vs 308€ vs 264€)",
+        "devisSource": "DEV26-11940",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose baguette soline sur delta MS",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 900.0,
+    "prixUnitaire": 45.0,
+    "unite": "ml",
+    "metrageRef": "20 ml",
+    "note": "Forfait pour 20ml ; unitaire 45€HT/ml",
+    "devisSource": "DEV26-11125",
+    "isChantier": true,
+    "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)",
+    "historiquePrix": [
+      {
+        "prixHT": 900.0,
+        "prixUnitaire": 45.0,
+        "unite": "ml",
+        "metrageRef": "20 ml",
+        "note": "Forfait pour 20ml ; unitaire 45€HT/ml",
+        "devisSource": "DEV26-11125",
+        "isChantier": true,
+        "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose bandeau alu thermolaqué anti-rats",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 1760.0,
+    "prixUnitaire": 295.8,
+    "unite": "ml",
+    "metrageRef": "5,95 ML (L5950 x H120mm)",
+    "note": "Tôle pleine sans jour pour éviter passage des rats. Forfait pour 5,95ml ; unitaire ~296€HT/ml",
+    "devisSource": "DEV26-11266",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 1760.0,
+        "prixUnitaire": 295.8,
+        "unite": "ml",
+        "metrageRef": "5,95 ML (L5950 x H120mm)",
+        "note": "Tôle pleine sans jour pour éviter passage des rats. Forfait pour 5,95ml ; unitaire ~296€HT/ml",
+        "devisSource": "DEV26-11266",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose barrières HERAS de sécurité",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 240,
+    "prixUnitaire": 240,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Sécurité chantier",
+    "devisSource": "DEV26-11482",
+    "isChantier": true,
+    "chantierGlobal": "Remplacement tronçon VRD 17ml profondeur 1.5m",
+    "historiquePrix": [
+      {
+        "prixHT": 240,
+        "prixUnitaire": 240,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Sécurité chantier",
+        "devisSource": "DEV26-11482",
+        "isChantier": true,
+        "chantierGlobal": "Remplacement tronçon VRD 17ml profondeur 1.5m"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose blindage",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 1500,
+    "prixUnitaire": 1500,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "Blindage tranchée",
+    "devisSource": "DEV26-11482",
+    "isChantier": true,
+    "chantierGlobal": "Remplacement tronçon VRD 17ml profondeur 1.5m",
+    "historiquePrix": [
+      {
+        "prixHT": 1500,
+        "prixUnitaire": 1500,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "Blindage tranchée",
+        "devisSource": "DEV26-11482",
+        "isChantier": true,
+        "chantierGlobal": "Remplacement tronçon VRD 17ml profondeur 1.5m"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose calendrite dans chenaux",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 912.0,
+    "prixUnitaire": 114.0,
+    "unite": "ml",
+    "metrageRef": "8 ML",
+    "note": "Forfait pour 8ml ; unitaire 114€HT/ml",
+    "devisSource": "DEV26-12068",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 912.0,
+        "prixUnitaire": 114.0,
+        "unite": "ml",
+        "metrageRef": "8 ML",
+        "note": "Forfait pour 8ml ; unitaire 114€HT/ml",
+        "devisSource": "DEV26-12068",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose chape béton pour rétablir pente",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 4620.0,
+    "prixUnitaire": 110.0,
+    "unite": "m²",
+    "metrageRef": "42 m²",
+    "note": "Forfait pour 42m² ; unitaire 110€HT/m²",
+    "devisSource": "DEV26-11492",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 4620.0,
+        "prixUnitaire": 110.0,
+        "unite": "m²",
+        "metrageRef": "42 m²",
+        "note": "Forfait pour 42m² ; unitaire 110€HT/m²",
+        "devisSource": "DEV26-11492",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose chapeau avec découpe sur toiture",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 330,
+    "prixUnitaire": 330,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11415",
+    "isChantier": true,
+    "chantierGlobal": "Travaux toiture chapeau + prolongation évent (570€)",
+    "historiquePrix": [
+      {
+        "prixHT": 330,
+        "prixUnitaire": 330,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11415",
+        "isChantier": true,
+        "chantierGlobal": "Travaux toiture chapeau + prolongation évent (570€)"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose chapeau chinois",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 168.0,
+    "prixUnitaire": 168.0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11519",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 168.0,
+        "prixUnitaire": 168.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11519",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose delta MS",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 816.0,
+    "prixUnitaire": 40.8,
+    "unite": "ml",
+    "metrageRef": "20 ml",
+    "note": "Membrane delta MS ; unitaire 40,80€HT/ml",
+    "devisSource": "DEV26-11125",
+    "isChantier": true,
+    "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)",
+    "historiquePrix": [
+      {
+        "prixHT": 816.0,
+        "prixUnitaire": 40.8,
+        "unite": "ml",
+        "metrageRef": "20 ml",
+        "note": "Membrane delta MS ; unitaire 40,80€HT/ml",
+        "devisSource": "DEV26-11125",
+        "isChantier": true,
+        "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose drain, géotextile et balastre",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 3480.0,
+    "prixUnitaire": 3480.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Système drainant complet",
+    "devisSource": "DEV26-11125",
+    "isChantier": true,
+    "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)",
+    "historiquePrix": [
+      {
+        "prixHT": 3480.0,
+        "prixUnitaire": 3480.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Système drainant complet",
+        "devisSource": "DEV26-11125",
+        "isChantier": true,
+        "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose grille 30x30 sur façade",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 210.0,
+    "prixUnitaire": 210.0,
+    "unite": "unité",
+    "metrageRef": "30x30",
+    "note": "Grille de ventilation façade",
+    "devisSource": "DEV26-12263",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 210.0,
+        "prixUnitaire": 210.0,
+        "unite": "unité",
+        "metrageRef": "30x30",
+        "note": "Grille de ventilation façade",
+        "devisSource": "DEV26-12263",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose habillage alu appui fenêtre avec mastic",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 312.0,
+    "prixUnitaire": 312.0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-12068",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 312.0,
+        "prixUnitaire": 312.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-12068",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose membrane étanche flashing pourtour cheminée",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 820.0,
+    "prixUnitaire": 820.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Membrane type flashing pour étanchéité cheminée",
+    "devisSource": "DEV26-12263",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 820.0,
+        "prixUnitaire": 820.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Membrane type flashing pour étanchéité cheminée",
+        "devisSource": "DEV26-12263",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose platine zinc",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 540.0,
+    "prixUnitaire": 540.0,
+    "unite": "unité",
+    "metrageRef": "diam 80",
+    "note": "Platine zinc descente pluviale",
+    "devisSource": "DEV26-12087",
+    "isChantier": true,
+    "chantierGlobal": "Travaux étanchéité Caserne Mirabeau (6836€)",
+    "historiquePrix": [
+      {
+        "prixHT": 540.0,
+        "prixUnitaire": 540.0,
+        "unite": "unité",
+        "metrageRef": "diam 80",
+        "note": "Platine zinc descente pluviale",
+        "devisSource": "DEV26-12087",
+        "isChantier": true,
+        "chantierGlobal": "Travaux étanchéité Caserne Mirabeau (6836€)"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose plot extra-plat & réglage",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 816.0,
+    "prixUnitaire": 816,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Becker - plus cher que ligne existante (696€)",
+    "devisSource": "DEV26-12482",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 816.0,
+        "prixUnitaire": 816,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Becker - plus cher que ligne existante (696€)",
+        "devisSource": "DEV26-12482",
+        "isChantier": false,
+        "chantierGlobal": ""
+      },
+      {
+        "prixHT": 696.0,
+        "prixUnitaire": 696.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11940",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose relevés alu",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 50,
+    "prixUnitaire": 50,
+    "unite": "ml",
+    "metrageRef": "1 ml (chantier 7ML)",
+    "note": "Estimé éclatement",
+    "devisSource": "DEV26-11753",
+    "isChantier": true,
+    "chantierGlobal": "Étanchéité souche VMC + 7ml relevés alu",
+    "historiquePrix": [
+      {
+        "prixHT": 50,
+        "prixUnitaire": 50,
+        "unite": "ml",
+        "metrageRef": "1 ml (chantier 7ML)",
+        "note": "Estimé éclatement",
+        "devisSource": "DEV26-11753",
+        "isChantier": true,
+        "chantierGlobal": "Étanchéité souche VMC + 7ml relevés alu"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose solin étanchéité",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 1440.0,
+    "prixUnitaire": 72.0,
+    "unite": "ml",
+    "metrageRef": "20 ML",
+    "note": "Becker - 20ml ; unitaire 72€HT/ml",
+    "devisSource": "DEV26-12482",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 1440.0,
+        "prixUnitaire": 72.0,
+        "unite": "ml",
+        "metrageRef": "20 ML",
+        "note": "Becker - 20ml ; unitaire 72€HT/ml",
+        "devisSource": "DEV26-12482",
+        "isChantier": false,
+        "chantierGlobal": ""
+      },
+      {
+        "prixHT": 1408.0,
+        "prixUnitaire": 44.0,
+        "unite": "ml",
+        "metrageRef": "32 ML",
+        "note": "Pour gros métrage (32ml) : 44€/ml. Pour petit métrage (16ml) : 72€/ml",
+        "devisSource": "DEV26-11492",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose étanchéité calendrite avec remontée verticale",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 4840.0,
+    "prixUnitaire": 115.24,
+    "unite": "m²",
+    "metrageRef": "42 m²",
+    "note": "Plus cher retenu (4840€/42m² ~115€/m²)",
+    "devisSource": "DEV26-11492",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 4840.0,
+        "prixUnitaire": 115.24,
+        "unite": "m²",
+        "metrageRef": "42 m²",
+        "note": "Plus cher retenu (4840€/42m² ~115€/m²)",
+        "devisSource": "DEV26-11492",
+        "isChantier": false,
+        "chantierGlobal": ""
+      },
+      {
+        "prixHT": 2880.0,
+        "prixUnitaire": 2880,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Becker - terrasse standard (sans précision m²)",
+        "devisSource": "DEV26-12482",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose étanchéité calendrite casquette béton avec baguette soline",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 576.0,
+    "prixUnitaire": 576.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "Petite casquette béton entre boîte à eau et façade avec remontée verticale",
+    "devisSource": "DEV26-11141",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 576.0,
+        "prixUnitaire": 576.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "Petite casquette béton entre boîte à eau et façade avec remontée verticale",
+        "devisSource": "DEV26-11141",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose étanchéité calendrite verticale extérieure",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 2250.0,
+    "prixUnitaire": 112.5,
+    "unite": "m²",
+    "metrageRef": "20 m²",
+    "note": "Forfait pour 20m² ; unitaire 112,50€HT/m²",
+    "devisSource": "DEV26-11125",
+    "isChantier": true,
+    "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)",
+    "historiquePrix": [
+      {
+        "prixHT": 2250.0,
+        "prixUnitaire": 112.5,
+        "unite": "m²",
+        "metrageRef": "20 m²",
+        "note": "Forfait pour 20m² ; unitaire 112,50€HT/m²",
+        "devisSource": "DEV26-11125",
+        "isChantier": true,
+        "chantierGlobal": "Travaux fuites Leveaux/Nagara (27147€)"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose étanchéité pourtour VMC & évent",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 330.0,
+    "prixUnitaire": 330.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11492",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 330.0,
+        "prixUnitaire": 330.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11492",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose étanchéité pourtour évacuation vers boîte à eau",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 360.0,
+    "prixUnitaire": 360.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11141",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 360.0,
+        "prixUnitaire": 360.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11141",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et pose étanchéité sur faitage",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 684.0,
+    "prixUnitaire": 114.0,
+    "unite": "ml",
+    "metrageRef": "6 ML",
+    "note": "Forfait pour 6ml ; unitaire 114€HT/ml",
+    "devisSource": "DEV26-12068",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 684.0,
+        "prixUnitaire": 114.0,
+        "unite": "ml",
+        "metrageRef": "6 ML",
+        "note": "Forfait pour 6ml ; unitaire 114€HT/ml",
+        "devisSource": "DEV26-12068",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et rebouchage sable, tout venant et filet avertisseur",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 240,
+    "prixUnitaire": 240,
+    "unite": "ml",
+    "metrageRef": "1 ml",
+    "note": "Rebouchage tranchée",
+    "devisSource": "DEV26-11482",
+    "isChantier": true,
+    "chantierGlobal": "Remplacement tronçon VRD 17ml profondeur 1.5m",
+    "historiquePrix": [
+      {
+        "prixHT": 240,
+        "prixUnitaire": 240,
+        "unite": "ml",
+        "metrageRef": "1 ml",
+        "note": "Rebouchage tranchée",
+        "devisSource": "DEV26-11482",
+        "isChantier": true,
+        "chantierGlobal": "Remplacement tronçon VRD 17ml profondeur 1.5m"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement boîte à eau fuyarde",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 348.0,
+    "prixUnitaire": 348.0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-11141",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 348.0,
+        "prixUnitaire": 348.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-11141",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement chapeau cheminée",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 260.0,
+    "prixUnitaire": 260.0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-12263",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 260.0,
+        "prixUnitaire": 260.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-12263",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement coude et gouttière horizontale descente EP",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 708.0,
+    "prixUnitaire": 177.0,
+    "unite": "ml",
+    "metrageRef": "4 ML",
+    "note": "Forfait pour 4ML ; unitaire 177€HT/ml. Inclut jeu de coude + gouttière horizontale jusqu'à boîte à eau",
+    "devisSource": "DEV26-11141",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 708.0,
+        "prixUnitaire": 177.0,
+        "unite": "ml",
+        "metrageRef": "4 ML",
+        "note": "Forfait pour 4ML ; unitaire 177€HT/ml. Inclut jeu de coude + gouttière horizontale jusqu'à boîte à eau",
+        "devisSource": "DEV26-11141",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement faîtage",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 484.0,
+    "prixUnitaire": 242.0,
+    "unite": "ml",
+    "metrageRef": "2 ML",
+    "note": "Forfait pour 2ml ; unitaire 242€HT/ml",
+    "devisSource": "DEV26-12257",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 484.0,
+        "prixUnitaire": 242.0,
+        "unite": "ml",
+        "metrageRef": "2 ML",
+        "note": "Forfait pour 2ml ; unitaire 242€HT/ml",
+        "devisSource": "DEV26-12257",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et remplacement tuiles avec reprise scellement et nettoyage",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 2980.0,
+    "prixUnitaire": 49.67,
+    "unite": "unité",
+    "metrageRef": "~60 tuiles",
+    "note": "Forfait pour ~60 tuiles ; unitaire ~50€HT/tuile",
+    "devisSource": "DEV26-12257",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 2980.0,
+        "prixUnitaire": 49.67,
+        "unite": "unité",
+        "metrageRef": "~60 tuiles",
+        "note": "Forfait pour ~60 tuiles ; unitaire ~50€HT/tuile",
+        "devisSource": "DEV26-12257",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et reprise acrotère et skydome",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 690.0,
+    "prixUnitaire": 690.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-12087",
+    "isChantier": true,
+    "chantierGlobal": "Travaux étanchéité Caserne Mirabeau (6836€)",
+    "historiquePrix": [
+      {
+        "prixHT": 690.0,
+        "prixUnitaire": 690.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-12087",
+        "isChantier": true,
+        "chantierGlobal": "Travaux étanchéité Caserne Mirabeau (6836€)"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et reprise cunette au mortier fibré",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 480.0,
+    "prixUnitaire": 480.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-12087",
+    "isChantier": true,
+    "chantierGlobal": "Travaux étanchéité Caserne Mirabeau (6836€)",
+    "historiquePrix": [
+      {
+        "prixHT": 480.0,
+        "prixUnitaire": 480.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-12087",
+        "isChantier": true,
+        "chantierGlobal": "Travaux étanchéité Caserne Mirabeau (6836€)"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et reprise étanchéité cunette et pluvial",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 1320.0,
+    "prixUnitaire": 1320.0,
+    "unite": "forfait",
+    "metrageRef": "",
+    "note": "",
+    "devisSource": "DEV26-12087",
+    "isChantier": true,
+    "chantierGlobal": "Travaux étanchéité Caserne Mirabeau (6836€)",
+    "historiquePrix": [
+      {
+        "prixHT": 1320.0,
+        "prixUnitaire": 1320.0,
+        "unite": "forfait",
+        "metrageRef": "",
+        "note": "",
+        "devisSource": "DEV26-12087",
+        "isChantier": true,
+        "chantierGlobal": "Travaux étanchéité Caserne Mirabeau (6836€)"
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et reprise étanchéité descente EP",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 360.0,
+    "prixUnitaire": 360,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "Becker - prix forfait par descente",
+    "devisSource": "DEV26-12482",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 360.0,
+        "prixUnitaire": 360,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "Becker - prix forfait par descente",
+        "devisSource": "DEV26-12482",
+        "isChantier": false,
+        "chantierGlobal": ""
+      },
+      {
+        "prixHT": 260.0,
+        "prixUnitaire": 260.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "Prix unitaire par descente",
+        "devisSource": "DEV26-11753",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et reprise étanchéité périphérique velux",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 924.0,
+    "prixUnitaire": 924.0,
+    "unite": "unité",
+    "metrageRef": "",
+    "note": "Étanchéité pourtour velux",
+    "devisSource": "DEV26-12257",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 924.0,
+        "prixUnitaire": 924.0,
+        "unite": "unité",
+        "metrageRef": "",
+        "note": "Étanchéité pourtour velux",
+        "devisSource": "DEV26-12257",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et reprise étanchéité solin calendrite",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 370.0,
+    "prixUnitaire": 185.0,
+    "unite": "ml",
+    "metrageRef": "~2 ML",
+    "note": "Forfait pour 2ml ; unitaire 185€HT/ml",
+    "devisSource": "DEV26-12257",
+    "isChantier": false,
+    "chantierGlobal": "",
+    "historiquePrix": [
+      {
+        "prixHT": 370.0,
+        "prixUnitaire": 185.0,
+        "unite": "ml",
+        "metrageRef": "~2 ML",
+        "note": "Forfait pour 2ml ; unitaire 185€HT/ml",
+        "devisSource": "DEV26-12257",
+        "isChantier": false,
+        "chantierGlobal": ""
+      }
+    ]
+  },
+  {
+    "designation": "Fourniture et reprise étanchéité sur souche VMC",
+    "categorie": "Étanchéité",
+    "typeClient": "Bailleur social",
+    "bailleur": "Vilogia",
+    "prixHT": 595,
+    "prixUnitaire": 595,
+    "unite": "forfait",
+    "metrageRef": "souche VMC",
+    "note": "Estimé éclatement (945€ - 7ml*50€/ml relevés alu)",
+    "devisSource": "DEV26-11753",
+    "isChantier": true,
+    "chantierGlobal": "Étanchéité souche VMC + 7ml relevés alu",
+    "historiquePrix": [
+      {
+        "prixHT": 595,
+        "prixUnitaire": 595,
+        "unite": "forfait",
+        "metrageRef": "souche VMC",
+        "note": "Estimé éclatement (945€ - 7ml*50€/ml relevés alu)",
+        "devisSource": "DEV26-11753",
+        "isChantier": true,
+        "chantierGlobal": "Étanchéité souche VMC + 7ml relevés alu"
+      }
+    ]
   }
 ];
 
@@ -2666,6 +7658,9 @@ function buildVilogiaTarif(v) {
     prixUnitaire: Math.round((v.prixUnitaire || v.prixHT) * 100) / 100,
     metrageRef: v.metrageRef || '',
     devisSource: v.devisSource || '',
+    isChantier: v.isChantier || false,
+    chantierGlobal: v.chantierGlobal || '',
+    historiquePrix: v.historiquePrix || [],
     tva,
     remise: 0,
     prixTTC: Math.round(prixTTC * 100) / 100,
@@ -2675,6 +7670,12 @@ function buildVilogiaTarif(v) {
     updatedAt: new Date().toISOString()
   };
 }
+
+// Listener pour fermer modal historique en cliquant à l'extérieur
+document.addEventListener('DOMContentLoaded', () => {
+  const mh = document.getElementById('modal-history');
+  if (mh) mh.addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('modal-history'); });
+});
 
 document.addEventListener('DOMContentLoaded', () => {
   const cfg = loadConfig() || FIREBASE_CONFIG_DEFAULT;
