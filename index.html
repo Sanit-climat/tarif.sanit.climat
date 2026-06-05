@@ -8411,6 +8411,13 @@ function renderPDFPreview() {
   let allLines = [];
   pdfImportSession.documents.forEach(d => { allLines = allLines.concat(d.lines); });
 
+  // Réinitialiser le bouton de validation (au cas où il serait resté disabled d'un import précédent)
+  const btn = document.getElementById('pdf-validate-btn');
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = '✓ Tout valider';
+  }
+
   const summary = `
     <div class="pdf-preview-summary">
       <div class="pdf-summary-item"><div class="dot" style="background:#1E7A3C"></div><strong id="cnt-new">0</strong> nouveaux</div>
@@ -8612,6 +8619,12 @@ function updatePDFCounts() {
 function closePDFPreview() {
   document.getElementById('modal-pdf-preview').classList.remove('open');
   pdfImportSession = { documents: [] };
+  // Réinitialiser le bouton pour la prochaine utilisation
+  const btn = document.getElementById('pdf-validate-btn');
+  if (btn) {
+    btn.disabled = false;
+    btn.textContent = '✓ Tout valider';
+  }
 }
 
 // ─── VALIDATION ET IMPORT FINAL ───
