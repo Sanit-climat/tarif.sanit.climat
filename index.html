@@ -8643,13 +8643,24 @@ async function validateAllPDFLines() {
   btn.disabled = true;
   btn.textContent = 'Import en cours…';
 
+  // Timeout de sécurité : si rien ne répond en 15s, on débloque
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Timeout Firebase (15s) — vérifiez les règles de sécurité de votre base')), 15000)
+  );
+
   try {
+    console.log('[PDF] Début import — Firebase actif:', !!db);
+
+    // Préparer toutes les opérations en parallèle
+    const ops = [];
+
     // Ajouts
     for (const line of toAdd) {
       const data = buildTarifFromPDFLine(line);
+      console.log('[PDF] Préparation ajout:', data.designation, '|', data.prixHT, '€');
       if (db) {
         const ref = getTarifsRef().push();
-        await ref.set(data);
+        ops.push(ref.set(data).then(() => console.log('[PDF] ✓ Ajouté:', data.designation)));
       } else {
         data._id = 'local_' + Date.now() + '_' + Math.random().toString(36).slice(2);
         tarifs.push(data);
@@ -8661,7 +8672,6 @@ async function validateAllPDFLines() {
       const existing = tarifs.find(t => t._id === line._existingId);
       const data = buildTarifFromPDFLine(line);
       data.createdAt = existing && existing.createdAt ? existing.createdAt : new Date().toISOString();
-      // Conserver et enrichir l'historique
       const histPrev = (existing && existing.historiquePrix) ? existing.historiquePrix : [];
       data.historiquePrix = [
         ...histPrev,
@@ -8677,21 +8687,29 @@ async function validateAllPDFLines() {
           date: new Date().toISOString()
         }
       ];
+      console.log('[PDF] Préparation remplacement:', data.designation);
       if (db) {
-        await getTarifsRef().child(line._existingId).set(data);
+        ops.push(getTarifsRef().child(line._existingId).set(data).then(() => console.log('[PDF] ✓ Remplacé:', data.designation)));
       } else {
         const idx = tarifs.findIndex(t => t._id === line._existingId);
         if (idx >= 0) tarifs[idx] = { ...data, _id: line._existingId };
       }
     }
 
+    console.log('[PDF] Lancement de', ops.length, 'opération(s) Firebase en parallèle…');
+
+    if (ops.length > 0) {
+      await Promise.race([Promise.all(ops), timeoutPromise]);
+    }
+
     if (!db) saveLocal();
 
+    console.log('[PDF] ✅ Import terminé avec succès');
     showNotif(`✅ ${toAdd.length} ajout(s), ${toReplace.length} mise(s) à jour`, 'success');
     closePDFPreview();
   } catch (err) {
-    console.error('Erreur import PDF', err);
-    showNotif('Erreur lors de l\'import — voir console', 'error');
+    console.error('[PDF] ❌ Erreur import:', err);
+    showNotif('Erreur : ' + (err.message || 'voir console'), 'error');
     btn.disabled = false;
     updatePDFCounts();
   }
