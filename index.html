@@ -1386,12 +1386,12 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 
 <!-- MODAL APERÇU PDF -->
 <div class="modal-overlay" id="modal-pdf-preview">
-  <div class="modal" style="max-width: 1100px;">
+  <div class="modal" style="max-width: 1400px; width: 95vw;">
     <div class="modal-header">
       <div class="modal-title">📄 Aperçu — Tarifs extraits du PDF</div>
       <button class="modal-close" onclick="closePDFPreview()">✕</button>
     </div>
-    <div class="modal-body" id="pdf-preview-body">
+    <div class="modal-body" id="pdf-preview-body" style="overflow-x: auto;">
       <!-- Contenu injecté dynamiquement -->
     </div>
     <div class="modal-footer" id="pdf-preview-footer">
@@ -8005,7 +8005,7 @@ let pdfImportSession = { documents: [] };
   });
 })();
 
-// ─── Point d'entrée : traitement des fichiers PDF ───
+// Point d'entrée : traitement des fichiers PDF
 async function handlePDFFiles(files) {
   files = Array.from(files || []);
   if (files.length === 0) return;
@@ -8013,6 +8013,9 @@ async function handlePDFFiles(files) {
     showNotif('PDF.js non chargé — rechargez la page', 'error');
     return;
   }
+
+  // Activer le mode debug : tous les logs apparaissent dans la console
+  window.__PDF_DEBUG = true;
 
   showNotif(`Extraction de ${files.length} PDF en cours…`, 'success');
   pdfImportSession = { documents: [] };
@@ -8248,7 +8251,7 @@ function detectColumnX(headerItems) {
 function parseTableRow(line, cols) {
   // Récupérer tous les items et trier par X
   const items = [...line.items].sort((a, b) => a.x - b.x);
-  if (items.length < 4) return null;
+  if (items.length < 3) return null;
 
   // Stratégie : les colonnes numériques (qté, HT, TVA, TTC) sont à droite.
   // On scanne de droite à gauche pour trouver les 4 valeurs numériques attendues,
@@ -8257,10 +8260,10 @@ function parseTableRow(line, cols) {
   const textItems = [];
 
   for (const it of items) {
-    const t = it.text.replace(/\s/g, '');
+    const t = it.text.replace(/\s/g, '').replace('%', '');
     // Prix : nombre suivi de € éventuellement (ex "20,00€" ou "330,00€")
-    // Quantité : entier simple
-    // TVA : 10 ou 20 (entier)
+    // Quantité : entier simple ou décimal
+    // TVA : 10 ou 20 (entier) ou 10,00 / 20,00
     if (/^-?\d+([.,]\d+)?€?$/.test(t)) {
       numericItems.push({ raw: t, x: it.x, value: parseFloat(t.replace('€', '').replace(',', '.')) });
     } else {
@@ -8268,22 +8271,68 @@ function parseTableRow(line, cols) {
     }
   }
 
-  // Il faut au moins 4 valeurs numériques (qté, HT, TVA, TTC)
-  if (numericItems.length < 4) return null;
+  if (window.__PDF_DEBUG) console.log('[PDF parse] ligne:', line.text, '| numériques:', numericItems.map(n => n.value), '| textes:', textItems.map(t => t.text));
 
-  // Les 4 dernières (à droite) sont qté, HT, TVA, TTC
-  const lastFour = numericItems.slice(-4);
-  const [qteN, htN, tvaN, ttcN] = lastFour;
+  // Il faut au moins 3 valeurs numériques (parfois TVA omise ou collée)
+  if (numericItems.length < 3) return null;
 
-  // Validation : TVA doit être 10 ou 20 (entier), HT doit avoir € ou être > qté
-  const tvaVal = tvaN.value;
-  if (![5.5, 10, 20].includes(tvaVal)) return null;
-
-  // Vérifier la cohérence : qté * HT * (1+TVA/100) ≈ TTC
-  const expectedTTC = qteN.value * htN.value * (1 + tvaVal / 100);
-  if (Math.abs(expectedTTC - ttcN.value) > 0.05 * ttcN.value && Math.abs(expectedTTC - ttcN.value) > 1) {
-    // Tolérance d'arrondi de 5% ou 1€
+  // Identifier la TVA : c'est forcément 5.5, 10 ou 20, et c'est typiquement l'avant-dernier numérique
+  // mais on cherche celui qui matche dans les 3 derniers
+  const lastFew = numericItems.slice(-4);
+  let tvaIdx = -1;
+  for (let i = lastFew.length - 1; i >= 0; i--) {
+    const v = lastFew[i].value;
+    if (v === 5.5 || v === 10 || v === 20) {
+      tvaIdx = i;
+      break;
+    }
+  }
+  if (tvaIdx < 0) {
+    if (window.__PDF_DEBUG) console.log('[PDF parse] TVA non détectée, ligne ignorée');
     return null;
+  }
+
+  const tvaN = lastFew[tvaIdx];
+  // TTC = numérique après la TVA (le dernier en général)
+  const ttcN = lastFew[lastFew.length - 1] !== tvaN ? lastFew[lastFew.length - 1] : null;
+  // HT = numérique juste avant la TVA
+  const htN = tvaIdx >= 1 ? lastFew[tvaIdx - 1] : null;
+  // Qté = numérique encore avant (ou défaut 1)
+  let qteN = tvaIdx >= 2 ? lastFew[tvaIdx - 2] : { value: 1, raw: '1' };
+
+  if (!htN || !ttcN) {
+    if (window.__PDF_DEBUG) console.log('[PDF parse] HT ou TTC manquant');
+    return null;
+  }
+
+  // Vérification de cohérence : qté × HT × (1+TVA/100) ≈ TTC
+  // Si ça ne colle pas avec qte=qteN, essayer avec qte=1
+  const tvaVal = tvaN.value;
+  let qteVal = qteN.value;
+  let expectedTTC = qteVal * htN.value * (1 + tvaVal / 100);
+  let diff = Math.abs(expectedTTC - ttcN.value);
+  let tolerance = Math.max(0.05 * ttcN.value, 1);
+
+  if (diff > tolerance) {
+    // Essayer avec qte=1
+    qteVal = 1;
+    expectedTTC = htN.value * (1 + tvaVal / 100);
+    diff = Math.abs(expectedTTC - ttcN.value);
+    if (diff > tolerance) {
+      // Essayer en considérant que qteN est en fait HT et que HT est qté
+      const swappedTTC = htN.value * qteN.value * (1 + tvaVal / 100);
+      if (Math.abs(swappedTTC - ttcN.value) <= tolerance) {
+        return {
+          designation: textItems.map(it => it.text).join(' ').trim(),
+          qte: htN.value,
+          prixHT: Math.round(qteN.value * 100) / 100,
+          tva: tvaVal,
+          prixTTC: Math.round(ttcN.value * 100) / 100
+        };
+      }
+      if (window.__PDF_DEBUG) console.log('[PDF parse] incohérence qté×HT×TVA != TTC, attendu:', expectedTTC, 'réel:', ttcN.value);
+      return null;
+    }
   }
 
   const designation = textItems.map(it => it.text).join(' ').trim();
@@ -8291,7 +8340,7 @@ function parseTableRow(line, cols) {
 
   return {
     designation,
-    qte: qteN.value,
+    qte: qteVal,
     prixHT: Math.round(htN.value * 100) / 100,
     tva: tvaVal,
     prixTTC: Math.round(ttcN.value * 100) / 100
@@ -8390,17 +8439,17 @@ function renderDocSection(doc) {
         </div>
         <div style="font-size:11px;color:var(--gray-500);">${doc.fileName}</div>
       </div>
-      <table class="pdf-preview-table">
+      <table class="pdf-preview-table" style="min-width: 1200px;">
         <thead>
           <tr>
-            <th style="width:32%;">Désignation</th>
-            <th style="width:14%;">Catégorie</th>
-            <th style="width:14%;">Bailleur</th>
-            <th style="width:11%;">Type client</th>
-            <th style="width:8%;">Qté</th>
-            <th style="width:9%;">Prix HT</th>
-            <th style="width:6%;">TVA</th>
-            <th style="width:6%;">Statut</th>
+            <th style="width:28%; min-width:300px;">Désignation</th>
+            <th style="width:11%; min-width:130px;">Catégorie</th>
+            <th style="width:11%; min-width:130px;">Bailleur</th>
+            <th style="width:11%; min-width:130px;">Type client</th>
+            <th style="width:6%; min-width:60px;">Qté</th>
+            <th style="width:8%; min-width:90px;">Prix HT</th>
+            <th style="width:7%; min-width:80px;">TVA</th>
+            <th style="width:18%; min-width:160px;">Statut</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -8412,6 +8461,7 @@ function renderDocSection(doc) {
 function renderPDFRow(line) {
   const rowClass = line.action === 'skip' ? 'skipped' : (line.status === 'dup' ? 'dup' : 'added');
   const statusHTML = renderStatusCell(line);
+  const qteVal = (line.qte == null || isNaN(line.qte)) ? 1 : line.qte;
 
   return `
     <tr class="${rowClass}" data-uid="${line._uid}">
@@ -8419,7 +8469,7 @@ function renderPDFRow(line) {
       <td>${renderCategorySelect(line)}</td>
       <td><input type="text" data-field="bailleur" value="${escapeHtml(line.bailleur)}" /></td>
       <td>${renderTypeClientSelect(line)}</td>
-      <td><input type="number" data-field="qte" value="${line.qte}" min="0" step="0.5" /></td>
+      <td><input type="number" data-field="qte" value="${qteVal}" min="0" step="0.5" /></td>
       <td><input type="number" data-field="prixHT" class="prix-input" value="${line.prixHT}" min="0" step="0.01" /></td>
       <td>${renderTvaSelect(line)}</td>
       <td>${statusHTML}</td>
@@ -8566,11 +8616,13 @@ function closePDFPreview() {
 
 // ─── VALIDATION ET IMPORT FINAL ───
 async function validateAllPDFLines() {
+  console.log('[PDF] Clic sur Tout valider — session:', pdfImportSession);
   const toAdd = [];
   const toReplace = [];
 
   pdfImportSession.documents.forEach(doc => {
     doc.lines.forEach(line => {
+      console.log('[PDF] Ligne:', line.designation, '| action:', line.action, '| status:', line.status, '| qte:', line.qte, '| prixHT:', line.prixHT);
       if (line.action === 'skip') return;
       if (line.action === 'replace' && line._existingId) {
         toReplace.push(line);
@@ -8579,6 +8631,8 @@ async function validateAllPDFLines() {
       }
     });
   });
+
+  console.log('[PDF] À ajouter:', toAdd.length, '| À remplacer:', toReplace.length);
 
   if (toAdd.length === 0 && toReplace.length === 0) {
     showNotif('Aucun tarif à importer', 'error');
@@ -8647,6 +8701,7 @@ function buildTarifFromPDFLine(line) {
   const tva = parseFloat(line.tva) || 10;
   const prixHT = Math.round((parseFloat(line.prixHT) || 0) * 100) / 100;
   const prixTTC = Math.round(prixHT * (1 + tva / 100) * 100) / 100;
+  const qte = (line.qte == null || isNaN(parseFloat(line.qte))) ? 1 : parseFloat(line.qte);
   return {
     designation: line.designation,
     categorie: line.categorie || 'Divers',
@@ -8665,7 +8720,7 @@ function buildTarifFromPDFLine(line) {
       prixUnitaire: prixHT,
       unite: line.unite || 'forfait',
       metrageRef: '',
-      note: 'Import PDF',
+      note: `Import PDF (qté ${qte})`,
       devisSource: line.devisSource || '',
       isChantier: false,
       chantierGlobal: '',
