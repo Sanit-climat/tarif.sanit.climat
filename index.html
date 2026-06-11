@@ -20585,14 +20585,23 @@ hr.div { border: none; border-top: 2px solid var(--border); margin: 22px 0; }
       </select>
     </div>
     <div class="field" style="max-width:560px;margin-top:14px;">
-      <label>Dépannages</label>
+      <label>Diagnostic de panne</label>
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:12px 14px;border:2px solid var(--border);border-radius:8px;font-weight:500;">
         <input type="checkbox" id="depInclus" onchange="updR()" style="width:18px;height:18px;cursor:pointer;">
-        <span>Dépannages inclus dans le forfait annuel (sans facturation séparée)</span>
+        <span>Diagnostic de panne inclus dans le forfait annuel</span>
       </label>
       <div id="depDetail" style="display:none;margin-top:10px;">
-        <label style="font-size:13px;color:var(--muted);">Nombre de dépannages inclus / an (laisser vide = illimité)</label>
-        <input type="number" id="depNb" min="1" placeholder="illimité" oninput="updR()" style="max-width:200px;">
+        <div style="font-size:13px;color:var(--muted);line-height:1.5;">Le déplacement et la recherche de panne seront inclus dans le forfait. La réparation (main-d'œuvre et pièces) reste facturée séparément.</div>
+      </div>
+    </div>
+    <div class="field" style="max-width:560px;margin-top:14px;">
+      <label>Astreinte</label>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:12px 14px;border:2px solid var(--border);border-radius:8px;font-weight:500;">
+        <input type="checkbox" id="astreinte" onchange="updR()" style="width:18px;height:18px;cursor:pointer;">
+        <span>Astreinte facturable (nuits, week-ends et jours fériés 24h/24)</span>
+      </label>
+      <div id="astDetail" style="display:none;margin-top:10px;">
+        <div style="font-size:13px;color:var(--muted);line-height:1.5;">Une clause d'astreinte sera ajoutée au contrat. Les interventions hors heures ouvrées seront facturées à l'appel, sans forfait annuel.</div>
       </div>
     </div>
     <div class="nav"><button class="btn btn-s" onclick="prev(4)">← Précédent</button><button class="btn btn-p" onclick="next(4)">Suivant →</button></div>
@@ -21412,6 +21421,8 @@ function fmt(n){ return n.toFixed(2).replace('.',','); }
 function updR(){
   const dep=document.getElementById('depInclus'), depD=document.getElementById('depDetail');
   if(dep&&depD) depD.style.display = dep.checked ? 'block' : 'none';
+  const ast=document.getElementById('astreinte'), astD=document.getElementById('astDetail');
+  if(ast&&astD) astD.style.display = ast.checked ? 'block' : 'none';
   const rc=document.getElementById('recap'), tb=document.getElementById('total');
   if(!rc) return;
   const {ht,tvaR,ttc}=calcTotal();
@@ -21459,7 +21470,7 @@ function collectData(){
     tarifMode:tm, nombreVisites:v('nbVis'), montantHT:ht, tva:tvaR, ttc,
     prestations, garantiePieces:v('garPieces'),
     depInclus: document.getElementById('depInclus')?.checked || false,
-    depNb: v('depNb') || '',
+    astreinte: document.getElementById('astreinte')?.checked || false,
     duree:v('duree'), dateDebut:v('dDeb'), dateFin:v('dFin'),
     equipements,
     sitePhoto: sitePhotoB64,
@@ -21753,7 +21764,7 @@ async function buildDocx(d){
     ...Blank(1),
     para([run('3.1 Entretien forfaitaire P2',{b:true,s:22,c:CYAN})],{sb:80,sa:80,align:AlignmentType.LEFT}),
     P("Cet entretien couvre l'ensemble des appareils énumérés en pièce jointe, et comprend :"),
-    Bul("1 visite annuelle systématique et préventive dont le détail est défini sur la nomenclature des opérations d'entretien en annexe ;"),
+    Bul(`${d.nombreVisites||'1 visite annuelle'} systématique et préventive dont le détail est défini sur la nomenclature des opérations d'entretien en annexe ;`),
     Bul("La prise en charge par le prestataire des frais de main-d'œuvre consécutifs aux dépannages demandés expressément par le client ou les utilisateurs."),
     ...Blank(1),
   );
@@ -21777,10 +21788,13 @@ async function buildDocx(d){
     ...Blank(1),hdr('DEPANNAGES'),...Blank(1),
     P("En dehors des visites planifiées et pendant les jours et heures œuvrées (de 08h00 à 17h00 du lundi au vendredi), le prestataire pourra être appelé à effectuer des dépannages."),
     (d.depInclus
-      ? para([run('Les dépannages sont inclus',{b:true}),run(d.depNb
-          ? ` dans le montant forfaitaire annuel, dans la limite de ${d.depNb} intervention(s) par an. Au-delà de cette limite, ils feront l'objet d'une facturation séparée.`
-          : " dans le montant forfaitaire annuel, sans facturation séparée des frais de déplacement ni de main-d'œuvre. Les pièces de rechange restent dues selon les conditions de l'article garantie pièces.")],{align:AlignmentType.JUSTIFIED})
+      ? para([run('Le diagnostic de panne est inclus',{b:true}),run(" dans le montant forfaitaire annuel : le déplacement et la recherche de panne sont pris en charge par le prestataire. La réparation (main-d'œuvre et pièces de rechange) fera l'objet d'une facturation séparée, sur devis préalable.")],{align:AlignmentType.JUSTIFIED})
       : para([run('Les dépannages ne sont pas inclus',{b:true}),run(" dans le montant forfaitaire annuel, ils feront l'objet d'une facturation séparée.")],{align:AlignmentType.JUSTIFIED})),
+    ...(d.astreinte ? [
+      ...Blank(1),hdr('ASTREINTE'),...Blank(1),
+      P("Le prestataire assure un service d'astreinte joignable en dehors des heures ouvrées, à savoir les nuits, les week-ends et les jours fériés, 24 heures sur 24."),
+      para([run("Les interventions réalisées dans le cadre de l'astreinte ne sont pas comprises dans le montant forfaitaire annuel.",{b:true}),run(" Elles font l'objet d'une facturation à l'appel, selon les tarifs en vigueur du prestataire, incluant le déplacement, la main-d'œuvre aux taux majorés applicables et les pièces de rechange éventuelles.")],{align:AlignmentType.JUSTIFIED}),
+    ] : []),
     ...Blank(1),hdr('FOURNITURES'),...Blank(1),
     P("Pour assurer l'entretien courant, le prestataire n'aura à sa charge que les ingrédients et consommables habituels de faible valeur (lubrifiants, produits de nettoyage, etc.)."),
     ...Blank(1),hdr('TRAVAUX HORS CONTRAT'),...Blank(1),
@@ -22549,7 +22563,7 @@ function fillFormFromData(d){
   }
   sv('garPieces', d.garantiePieces);
   const depEl=document.getElementById('depInclus'); if(depEl) depEl.checked = !!d.depInclus;
-  sv('depNb', d.depNb||'');
+  const astEl=document.getElementById('astreinte'); if(astEl) astEl.checked = !!d.astreinte;
 
   // Équipements
   document.getElementById('eq-list').innerHTML=''; eqIdCtr=0;
